@@ -211,9 +211,12 @@ class CustomerGenerator:
                 params.treatment_churn_effect, 0.03
             )
             
-            propensities['avg_purchase_value'][i] = self.rng.normal(
-                params.avg_purchase_value,
-                params.purchase_value_std
+            propensities['avg_purchase_value'][i] = np.maximum(
+                self.rng.normal(
+                    params.avg_purchase_value,
+                    params.purchase_value_std
+                ),
+                1.0  # Minimum $1 purchase value
             )
         
         return propensities

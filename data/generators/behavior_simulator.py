@@ -128,11 +128,14 @@ class BehaviorSimulator:
         outcomes['purchased'] = self.rng.binomial(1, purchase_probs)
         
         # Simulate purchase amounts (only for those who purchased)
+        # Ensure avg_purchase_value is positive for use as std dev
+        safe_avg_purchase = np.maximum(df['avg_purchase_value'], 1.0)  # Minimum $1
+        
         outcomes['purchase_amount'] = np.where(
             outcomes['purchased'],
             self.rng.normal(
-                df['avg_purchase_value'],
-                df['avg_purchase_value'] * 0.2  # 20% std dev
+                safe_avg_purchase,
+                safe_avg_purchase * 0.2  # 20% std dev
             ),
             0
         )
