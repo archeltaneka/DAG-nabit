@@ -17,6 +17,8 @@ import textwrap
 from data.generators.config import SimulationConfig, SEGMENT_PARAMS
 from data.generators.customer_generator import generate_customer_data
 from data.generators.behavior_simulator import BehaviorSimulator
+from experiments.observational_study import ObservationalStudy, ObservationalStudyConfig
+from experiments.multi_arm import DoseResponseExperiment
 
 # -----------------------------------------------------------------------------
 # Configuration & Setup
@@ -291,7 +293,7 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 
 @st.cache_data
-def load_data(n_customers, random_seed, confounding_level, include_noise, rare_events):
+def load_data(n_customers, random_seed, include_noise, rare_events):
     """
     Generate customer population and simulate experiment.
     Cached to prevent regeneration on every interaction.
@@ -311,20 +313,30 @@ def load_data(n_customers, random_seed, confounding_level, include_noise, rare_e
     # 2. Simulate Biased Experiment
     simulator = BehaviorSimulator(customers, config)
     
-    # Determine bias method based on level
-    if confounding_level == "None (Randomized Trial)":
-        assignment = 'random'
-    elif confounding_level == "Moderate (Activity Bias)":
-        assignment = 'biased_activity'
-    else: # "High (Value Bias)"
-        assignment = 'biased_value'
-        
-    experiment_data = simulator.simulate_experiment(
-        treatment_assignment=assignment,
+    random_experiment_data = simulator.simulate_experiment(
+        treatment_assignment='random',
+        treatment_probability=0.5,
         discount_amount=0.20
     )
+
+    biased_experiment_data = simulator.simulate_experiment(
+        treatment_assignment='biased_activity',
+        discount_amount=0.20
+    )
+
+    # 3. Run Observational Study
+    study_config = ObservationalStudyConfig(
+        treatment_col='treated',
+        outcome_col='purchased',
+        confounders=['activity_score', 'tenure_months', 'prev_purchases']
+    )
     
-    return customers, experiment_data
+    observational_study = ObservationalStudy(study_config)
+    
+    # Run on biased data
+    observational_results = observational_study.check_balance(biased_experiment_data)
+    
+    return customers, random_experiment_data, biased_experiment_data, observational_results
 
 # -----------------------------------------------------------------------------
 # Sidebar
@@ -378,10 +390,10 @@ with st.sidebar:
 
 # Get simulation parameters
 random_seed = st.session_state.get("random_seed", 42)
-confounding_level = "Moderate (Activity Bias)"  # Can be made dynamic
 
 # Load Data
-customers, df = load_data(n_customers, random_seed, confounding_level, include_noise, rare_events)
+customers, randomized_df, biased_df, observational_results = load_data(n_customers, random_seed, include_noise, rare_events)
+print(observational_results)
 
 # -----------------------------------------------------------------------------
 # Main Application
@@ -401,7 +413,7 @@ st.markdown("""
 # Tabs
 tab_simulation, tab_experiment, tab_inference = st.tabs([
     "Ground Truth", 
-    "Experimentation Framework", 
+    "A/B Test", 
     "Causal Inference Methods"
 ])
 
@@ -759,118 +771,246 @@ with tab_simulation:
         
         st.plotly_chart(fig_box, use_container_width=True, config={'displayModeBar': False})
     
-    # Updated Scatter Plot with Synced Colors
     st.markdown("""
-        <div class="chart-container">
-            <div class="chart-title">True Causal Effects vs. Observable Features</div>
-            <div class="chart-subtitle">Reveals the correlation structure between treatment effects and customer activity</div>
+        <div style="background-color: rgba(236, 72, 153, 0.1); 
+                    border-left: 4px solid #ec4899; 
+                    padding: 1rem; 
+                    border-radius: 4px; 
+                    margin-top: 10px;">
+            <p style="margin: 0; font-size: 0.9rem; color: #e4e7eb; line-height: 1.4;">
+                <span style="font-size: 1.2rem; margin-right: 5px;">💡</span> 
+                <b>Key Insight:</b> <span style="color: #ec4899; font-weight: 700;">'Sleeping Dogs'</span> 
+                have <b>NEGATIVE lift</b> — discounts hurt conversion! 
+                <br/>This is realistic: some 
+                customers see discounts as 'cheap' or spammy.
+            </p>
         </div>
     """, unsafe_allow_html=True)
-
-    # Use the same color map we established for the rest of the UI
-    colors_map = {
-        'Loyalists': '#38bdf8',
-        'Persuadables': '#22c55e',
-        'Sleeping Dogs': '#ec4899',
-        'Lost Causes': '#fbbf24'
-    }
-
-    # Create a display-ready column for the legend
-    plot_df_scatter = customers.sample(min(2000, len(customers))).copy()
-    plot_df_scatter['Segment'] = plot_df_scatter['segment'].str.title().str.replace('_', ' ')
-
-    fig_scatter = px.scatter(
-        plot_df_scatter,
-        x="activity_score",
-        y="discount_effect",
-        color="Segment",
-        size="account_value",
-        hover_data=["age", "tenure_months"],
-        color_discrete_map=colors_map, # This syncs the colors
-        labels={
-            "discount_effect": "True Lift in Purchase Prob (pp)", 
-            "activity_score": "Activity Score (0-100)"
-        },
-        category_orders={"Segment": ["Loyalists", "Persuadables", "Sleeping Dogs", "Lost Causes"]}
-    )
-
-    fig_scatter.update_layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(family="Inter, sans-serif", color='#94a3b8'),
-        height=500,
-        margin=dict(t=20, b=20, l=20, r=20),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor='#2d3748',
-            zeroline=False
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor='#2d3748',
-            zeroline=True,
-            zerolinecolor='#4a5568'
-        ),
-        legend=dict(
-            title="",
-            bgcolor='rgba(26, 31, 46, 0.8)',
-            bordercolor='#2d3748',
-            borderwidth=1,
-            font=dict(size=11, color='#e4e7eb'),
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
-    )
-
-    # Refine marker appearance
-    fig_scatter.update_traces(marker=dict(opacity=0.7, line=dict(width=0.5, color='#0f1419')))
-
-    st.plotly_chart(fig_scatter, use_container_width=True, config={'displayModeBar': False})
 
 # -----------------------------------------------------------------------------
 # Tab 2: Experimentation Framework
 # -----------------------------------------------------------------------------
 
 with tab_experiment:
-    st.markdown("### 🧪 The Observable Bias")
-    st.markdown("This is what we see in the **real world**: observing outcomes without knowing counterfactuals.")
     
-    # Check for bias
-    is_biased = confounding_level != "None (Randomized Trial)"
-    
-    if is_biased:
-        st.warning(f"⚠️ **Selection Bias Detected**: {confounding_level}. Treated group is NOT comparable to Control.")
-    else:
-        st.success("✅ **RCT**: Random Assignment. Treated and Control groups are comparable.")
+    st.markdown("""
+        <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
+            <h3 style="color: #e4e7eb; margin-top: 0;">🧪 The A/B Test Paradox</h3>
+            <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
+                <b>Real-world scenario</b>: Marketing team has been targeting "engaged" customers.<br/>
+                <b>Problem</b>: This creates selection bias - engaged customers buy more anyway!<br/>
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Row 1: Bias Visualization
-    col1, col2 = st.columns(2)
+    col_comparison_bar, col_comparison_ci = st.columns([1.5, 1])
+
+    # Pre-calculate metrics for plotting
+    # Randomized data
+    rand_conv = randomized_df.groupby('treated')['purchased'].mean()
+    lift_rand = rand_conv[1] - rand_conv[0]
+    ci_lower_rand, ci_upper_rand = lift_rand - 0.02, lift_rand + 0.02 # Replace with your math
     
-    with col1:
-        st.markdown("""
-            <div class="chart-container">
-                <div class="chart-title">Treatment Assignment Bias</div>
-            </div>
-        """, unsafe_allow_html=True)
+    # Naive data
+    naive_conv = biased_df.groupby('treated')['purchased'].mean()
+    lift_naive = naive_conv[1] - naive_conv[0]
+    ci_lower_naive, ci_upper_naive = lift_naive - 0.03, lift_naive + 0.03 # Replace with your math
+
+    # --- 1. Consolidated Conversion Bar Chart ---
+    with col_comparison_bar:
+        st.markdown('<div class="chart-title" style="font-size:0.9rem;">Conversion Rates: Randomized vs. Naive</div>', unsafe_allow_html=True)
         
-        fig_hist = px.histogram(
-            df,
-            x="activity_score",
-            color="treated",
-            barmode="overlay",
-            labels={"treated": "Treated"},
-            opacity=0.7,
-            color_discrete_map={0: '#94a3b8', 1: '#667eea'}
+        fig_conv = go.Figure()
+
+        scenarios = ['Randomized Test', 'Naive (Biased)']
+        lifts = [lift_rand, lift_naive]
+        colors = ['#2ecc71', '#e74c3c'] # Green for good, Red for bad
+        controls = [rand_conv[0], naive_conv[0]]
+        treatments = [rand_conv[1], naive_conv[1]]
+        
+        # Add Control Group Bars
+        fig_conv.add_trace(go.Bar(
+            name='Control',
+            x=['Randomized Test', 'Naive (Biased)'],
+            y=[rand_conv[0], naive_conv[0]],
+            marker_color='#94a3b8',
+            text=[f"{rand_conv[0]:.1%}", f"{naive_conv[0]:.1%}"],
+            textposition='outside'
+        ))
+        
+        # Add Treatment Group Bars
+        fig_conv.add_trace(go.Bar(
+            name='Treatment',
+            x=['Randomized Test', 'Naive (Biased)'],
+            y=[rand_conv[1], naive_conv[1]],
+            marker_color=['#6366f1', '#6366f1'], # Indigo for Truth, Rose for Bias
+            text=[f"{rand_conv[1]:.1%}", f"{naive_conv[1]:.1%}"],
+            textposition='outside'
+        ))
+
+        # Add Lift Annotations (The floating "Difference" labels)
+        for i, scenario in enumerate(scenarios):
+            lift_val = lifts[i]
+            # Choose color based on scenario
+            text_color = colors[i]
+            
+            fig_conv.add_annotation(
+                x=scenario,
+                # Position the label slightly above the taller bar
+                y=max(controls[i], treatments[i]) + 0.15,
+                text=f"Δ Lift: {lift_val:+.1%}",
+                showarrow=False,
+                font=dict(family="Inter, sans-serif", size=12, color=text_color, weight=800),
+                bgcolor="rgba(15, 20, 25, 0.8)",
+                bordercolor=text_color,
+                borderwidth=1,
+                borderpad=4
+            )
+
+        fig_conv.update_layout(
+            barmode='group',
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter, sans-serif", color='#94a3b8'),
+            height=350,
+            margin=dict(t=40, b=0, l=0, r=0),
+            yaxis=dict(range=[0, 1.1], showticklabels=False, showgrid=False),
+            legend=dict(
+                orientation="h", 
+                yanchor="bottom", 
+                y=1.02, 
+                xanchor="right", 
+                x=1,
+                font=dict(size=10)
+            )
         )
+        st.plotly_chart(fig_conv, use_container_width=True, config={'displayModeBar': False})
+
+    # --- 2. Consolidated Lift CI Chart ---
+    with col_comparison_ci:
+        st.markdown('<div class="chart-title" style="font-size:0.9rem;">Conversion Rates: Lift Comparison (CI)</div>', unsafe_allow_html=True)
         
+        fig_ci = go.Figure()
+
+        # Randomized Lift Point
+        fig_ci.add_trace(go.Scatter(
+            x=['Randomized', 'Naive'], # Set x-coordinates
+            y=[lift_rand, None],       # Only plot first point
+            name='True Lift',
+            error_y=dict(type='data', symmetric=False, 
+                         array=[ci_upper_rand - lift_rand], 
+                         arrayminus=[lift_rand - ci_lower_rand], 
+                         thickness=3, width=10),
+            mode='markers', marker=dict(size=14, color='#2ecc71'),
+            showlegend=False
+        ))
+
+        # Naive Lift Point
+        fig_ci.add_trace(go.Scatter(
+            x=['Naive'], y=[lift_naive],
+            name='Naive Lift',
+            error_y=dict(type='data', symmetric=False, 
+                         array=[ci_upper_naive - lift_naive], 
+                         arrayminus=[lift_naive - ci_lower_naive], 
+                         thickness=3, width=10),
+            mode='markers', marker=dict(size=14, color='#f43f5e'),
+            showlegend=False
+        ))
+
+        fig_ci.add_hline(y=0, line_dash="dash", line_color="#4a5568", line_width=2)
+
+        fig_ci.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode='lines',
+            line=dict(color='#4a5568', dash='dash', width=2),
+            name='No effect',
+            showlegend=True
+        ))
+        
+        fig_ci.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter, sans-serif", color='#94a3b8'),
+            height=350,
+            margin=dict(t=40, b=40, l=40, r=20),
+            # Narrow the X-axis range to bring points closer together
+            xaxis=dict(
+                gridcolor='#2d3748',
+                range=[-0.5, 1.5], # Constrains the space around the two points
+                fixedrange=True
+            ),
+            yaxis=dict(gridcolor='#2d3748', title="Lift Value (pp)"),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                font=dict(size=10)
+            ),
+            showlegend=True
+        )
+        st.plotly_chart(fig_ci, use_container_width=True, config={'displayModeBar': False})
+
+    # Contextual Warning
+    st.warning(f"🚨 **The Illusion:** The Naive test suggests a lift of **{(lift_naive*100):.1f}%**, while the True lift is only **{(lift_rand*100):.1f}%**. This happens because we treated users who were going to buy anyway!")
+
+    col_hist, col_stats = st.columns([1.6, 1])
+
+    with col_hist:
+        st.markdown("""
+            <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
+                <h3 style="color: #e4e7eb; margin-top: 0;">⚠️ Diagnose Confounding - Treatment Assignment Bias</h3>
+                <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
+                    Treatment and control groups have DIFFERENT activity levels. This confounds our analysis - we're not comparing like to like!
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+
+        # Calculate means for the lines
+        mean_control = biased_df[biased_df['treated'] == 0]['activity_score'].mean()
+        mean_treated = biased_df[biased_df['treated'] == 1]['activity_score'].mean()
+        plot_df = biased_df.copy()
+        plot_df['Group'] = plot_df['treated'].map({0: 'Control', 1: 'Treated'})
+
+        # 2. Update the histogram
+        fig_hist = px.histogram(
+            plot_df,
+            x="activity_score",
+            color="Group", # Use the new string column
+            barmode="overlay",
+            opacity=0.7,
+            # Update the color map to use the new string keys
+            color_discrete_map={'Control': '#94a3b8', 'Treated': '#667eea'},
+            category_orders={"Group": ["Control", "Treated"]} # Ensures consistent ordering
+        )
+
+        # 3. Update the mean lines to use the new labels
+        fig_hist.add_vline(
+            x=mean_control, 
+            line_dash="dash", 
+            line_color="#94a3b8", 
+            annotation_text=f"Control Mean: {mean_control:.1f}", 
+            annotation_position="top left",
+            annotation_font_color="#94a3b8"
+        )
+
+        fig_hist.add_vline(
+            x=mean_treated, 
+            line_dash="dash", 
+            line_color="#667eea", 
+            annotation_text=f"Treated Mean: {mean_treated:.1f}", 
+            annotation_position="top right",
+            annotation_font_color="#667eea"
+        )
+
         fig_hist.update_layout(
-            plot_bgcolor='#0f1419',
-            paper_bgcolor='#0f1419',
-            font_color='#e4e7eb',
+            plot_bgcolor='rgba(0,0,0,0)', # Transparent to match your container
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter, sans-serif", color='#e4e7eb'),
             height=400,
+            margin=dict(t=50), # Space for annotations
             xaxis=dict(
                 showgrid=True,
                 gridcolor='#2d3748',
@@ -879,128 +1019,118 @@ with tab_experiment:
             yaxis=dict(
                 showgrid=True,
                 gridcolor='#2d3748',
+                title='Customer Count'
             ),
             legend=dict(
+                title="Group",
                 bgcolor='rgba(26, 31, 46, 0.8)',
                 bordercolor='#2d3748',
-                borderwidth=1
+                borderwidth=1,
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
             )
         )
-        
-        st.plotly_chart(fig_hist, use_container_width=True)
-        
-    with col2:
+
+        st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
+
+    with col_stats:
         st.markdown("""
-            <div class="chart-container">
-                <div class="chart-title">Naive Estimates (Misleading!)</div>
+            <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
+                <h3 style="color: #e4e7eb; margin-top: 0;">⚠️ Diagnose Confounding - SMD</h3>
+                <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
+                    SMD (Standardized Mean Difference): It measures the size of the difference between groups in a way that isn't affected by the scale of the units.
+                </p>
             </div>
         """, unsafe_allow_html=True)
         
-        # Naive ATE calculation
-        treated_conv = df[df['treated']==1]['purchased'].mean()
-        control_conv = df[df['treated']==0]['purchased'].mean()
-        naive_lift = treated_conv - control_conv
-        
-        # True ATE calculation
-        true_ate = df['discount_effect'].mean() * 0.20
-        
-        fig_bar = go.Figure(data=[
-            go.Bar(
-                name='Naive Look', 
-                x=['Lift'], 
-                y=[naive_lift], 
-                marker_color='#ef4444' if is_biased else '#667eea',
-                text=[f'{naive_lift:.4f}'],
-                textposition='outside'
-            ),
-            go.Bar(
-                name='True Causal Effect', 
-                x=['Lift'], 
-                y=[true_ate], 
-                marker_color='#22c55e',
-                text=[f'{true_ate:.4f}'],
-                textposition='outside'
-            )
-        ])
-        
-        fig_bar.update_layout(
-            plot_bgcolor='#0f1419',
-            paper_bgcolor='#0f1419',
-            font_color='#e4e7eb',
-            barmode='group',
-            height=400,
-            showlegend=True,
-            xaxis=dict(showgrid=False),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='#2d3748',
-            ),
-            legend=dict(
-                bgcolor='rgba(26, 31, 46, 0.8)',
-                bordercolor='#2d3748',
-                borderwidth=1
-            )
-        )
-        
-        st.plotly_chart(fig_bar, use_container_width=True)
-        
-        st.metric(
-            label="Estimation Error", 
-            value=f"{abs(naive_lift - true_ate):.4f}", 
-            delta="Lower is better", 
-            delta_color="inverse"
+        # Calculate balance metrics (using your reported numbers)
+        # In a real app, you can automate this calculation
+        balance_df = pd.DataFrame({
+            "Feature": ["Activity", "Tenure", "Purchases"],
+            "Diff": ["+20.17", "+5.30", "+0.93"],
+            "SMD": [0.75, 0.23, 0.44],
+            "Imbalanced": ["⚠️ YES", "⚠️ YES", "⚠️ YES"]
+        })
+
+        # Displaying the table with modern styling
+        st.dataframe(
+            balance_df,
+            column_config={
+                "Feature": st.column_config.TextColumn("Feature"),
+                "Diff": st.column_config.TextColumn("Mean Δ"),
+                "SMD": st.column_config.NumberColumn("SMD", format="%.2f"),
+                "Imbalanced": st.column_config.TextColumn("Status")
+            },
+            hide_index=True,
+            use_container_width=True
         )
 
+        st.markdown(f"""
+            <div style="background-color: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); padding: 12px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+                    <b style="color: #f43f5e;">Crucial Note:</b> An SMD > 0.1 indicates <b>Selection Bias</b>. 
+                    Simple A/B comparisons will be misleading because the groups are no longer comparable.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
     # Dose-Response
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### 💊 Dose-Response Simulation")
-    st.markdown("What happens if we vary the discount amount?")
+    st.markdown("""
+            <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
+                <h3 style="color: #e4e7eb; margin-top: 0;">💊 Dose-Response Simulation</h3>
+                <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
+                    <b>Business Question</b>: What's the optimal discount level? Not just "which is best" but "what's the relationship between dose and response?"
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    doses = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+    results = []
     
-    if st.button("Run Dose-Response Simulation"):
-        doses = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
-        results = []
+    config_temp = SimulationConfig(n_customers=1000, random_seed=random_seed)
+    cust_temp = generate_customer_data(config_temp)
+    sim_temp = BehaviorSimulator(cust_temp, config_temp)
+    
+    for d in doses:
+        d_df = sim_temp.simulate_experiment(treatment_assignment='random', discount_amount=d)
+        conv_rate = d_df[d_df['treated']==1]['purchased'].mean()
+        results.append({'Discount': d, 'Conversion': conv_rate})
         
-        config_temp = SimulationConfig(n_customers=1000, random_seed=random_seed)
-        cust_temp = generate_customer_data(config_temp)
-        sim_temp = BehaviorSimulator(cust_temp, config_temp)
-        
-        for d in doses:
-            d_df = sim_temp.simulate_experiment(treatment_assignment='random', discount_amount=d)
-            conv_rate = d_df[d_df['treated']==1]['purchased'].mean()
-            results.append({'Discount': d, 'Conversion': conv_rate})
-            
-        dr_df = pd.DataFrame(results)
-        
-        fig_dr = px.line(
-            dr_df, 
-            x="Discount", 
-            y="Conversion", 
-            markers=True,
+    dr_df = pd.DataFrame(results)
+    
+    fig_dr = px.line(
+        dr_df, 
+        x="Discount", 
+        y="Conversion", 
+        markers=True,
+    )
+    
+    fig_dr.update_traces(
+        line_color='#667eea',
+        marker=dict(size=10, color='#667eea')
+    )
+    
+    fig_dr.update_layout(
+        plot_bgcolor='#0f1419',
+        paper_bgcolor='#0f1419',
+        font_color='#e4e7eb',
+        height=400,
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='#2d3748',
+            title='Discount Amount'
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='#2d3748',
+            title='Conversion Rate'
         )
-        
-        fig_dr.update_traces(
-            line_color='#667eea',
-            marker=dict(size=10, color='#667eea')
-        )
-        
-        fig_dr.update_layout(
-            plot_bgcolor='#0f1419',
-            paper_bgcolor='#0f1419',
-            font_color='#e4e7eb',
-            height=400,
-            xaxis=dict(
-                showgrid=True,
-                gridcolor='#2d3748',
-                title='Discount Amount'
-            ),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='#2d3748',
-                title='Conversion Rate'
-            )
-        )
-        
-        st.plotly_chart(fig_dr, use_container_width=True)
+    )
+    
+    st.plotly_chart(fig_dr, use_container_width=True)
 
 # -----------------------------------------------------------------------------
 # Tab 3: Causal Inference Methods
@@ -1014,10 +1144,10 @@ with tab_inference:
     st.markdown("#### Method Comparison")
     
     # Calculations
-    treated_conv = df[df['treated']==1]['purchased'].mean()
-    control_conv = df[df['treated']==0]['purchased'].mean()
+    treated_conv = biased_df[biased_df['treated']==1]['purchased'].mean()
+    control_conv = biased_df[biased_df['treated']==0]['purchased'].mean()
     naive_ate = treated_conv - control_conv
-    true_ate = (df['discount_effect'] * 0.20).mean()
+    true_ate = (biased_df['discount_effect'] * 0.20).mean()
     
     # Simulated corrections
     error = naive_ate - true_ate
@@ -1082,7 +1212,7 @@ with tab_inference:
         
     with col2:
         # Gain curve
-        sorted_df = df.sort_values('discount_effect', ascending=False).reset_index()
+        sorted_df = biased_df.sort_values('discount_effect', ascending=False).reset_index()
         sorted_df['cum_n'] = sorted_df.index + 1
         sorted_df['cum_lift'] = sorted_df['discount_effect'].cumsum()
         
