@@ -311,21 +311,9 @@ def load_data(n_customers, discount_amount, ab_proportion, random_seed, include_
         customers['activity_score'] = customers['activity_score'] + np.random.normal(0, 5, len(customers))
         customers['activity_score'] = customers['activity_score'].clip(0, 100)
     
-    # 2. Simulate Biased Experiment
     simulator = BehaviorSimulator(customers, config)
     
-    random_experiment_data = simulator.simulate_experiment(
-        treatment_assignment='random',
-        treatment_probability=ab_proportion,
-        discount_amount=discount_amount
-    )
-
-    biased_experiment_data = simulator.simulate_experiment(
-        treatment_assignment='biased_activity',
-        discount_amount=discount_amount
-    )
-    
-    return customers, random_experiment_data, biased_experiment_data, simulator
+    return customers, simulator
 
 @st.cache_data
 def load_ab_test_data(_simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta):
@@ -344,13 +332,13 @@ def load_ab_test_data(_simulator, ab_proportion, discount_amount, control_rate, 
         treatment_probability=ab_proportion,
         discount_amount=discount_amount
     )
-    randomized_results = ab_test.run_test(random_experiment_data, treatment_col='treated', outcome_col='purchased')
+    ab_test_randomized_results = ab_test.run_test(random_experiment_data, treatment_col='treated', outcome_col='purchased')
     
     biased_experiment_data = simulator.simulate_experiment(
         treatment_assignment='biased_activity',
         discount_amount=discount_amount
     )
-    biased_results = ab_test.run_test(biased_experiment_data, treatment_col='treated', outcome_col='purchased')
+    ab_test_biased_results = ab_test.run_test(biased_experiment_data, treatment_col='treated', outcome_col='purchased')
 
     # Run Observational Study
     study_config = ObservationalStudyConfig(
@@ -364,7 +352,7 @@ def load_ab_test_data(_simulator, ab_proportion, discount_amount, control_rate, 
     # Run on biased data
     observational_results = observational_study.check_balance(biased_experiment_data)
 
-    return sample_sizes, randomized_results, biased_results, observational_results
+    return sample_sizes, ab_test_randomized_results, ab_test_biased_results, observational_results
 
 @st.cache_data
 def load_multi_arm_data(n_per_arm, discount_amount, random_seed, include_noise):
@@ -484,10 +472,10 @@ with st.sidebar:
 random_seed = st.session_state.get("random_seed", 42)
 
 # Load Data
-customers, randomized_df, biased_df, simulator = load_data(n_customers, discount_amount, ab_proportion, random_seed, include_noise)
+customers, simulator = load_data(n_customers, discount_amount, ab_proportion, random_seed, include_noise)
 
 # Load AB Test Data
-sample_sizes, randomized_results, biased_results, observational_results = load_ab_test_data(simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta)
+sample_sizes, ab_test_randomized_results, ab_test_biased_results, observational_results = load_ab_test_data(simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta)
 
 # -----------------------------------------------------------------------------
 # Main Application
@@ -945,18 +933,18 @@ with tab_experiment:
         </div>
     """, unsafe_allow_html=True)
 
-    col_comparison_bar, col_comparison_ci = st.columns([1.5, 1])
+    # Randomized Results (The Truth)
+    scenarios = ['Randomized Test', 'Naive (Biased)']
+    # Grouping the data for Plotly
+    control_rates = [ab_test_randomized_results['control_rate'], ab_test_biased_results['control_rate']]
+    treatment_rates = [ab_test_randomized_results['treatment_rate'], ab_test_biased_results['treatment_rate']]
+    # Define the lifts and CIs
+    lifts = [ab_test_randomized_results['absolute_lift'], ab_test_biased_results['absolute_lift']]
+    lowers = [ab_test_randomized_results['ci_lower'], ab_test_biased_results['ci_lower']]
+    uppers = [ab_test_randomized_results['ci_upper'], ab_test_biased_results['ci_upper']]
+    sigs = [ab_test_randomized_results['is_significant'], ab_test_biased_results['is_significant']]
 
-    # Pre-calculate metrics for plotting
-    # Randomized data
-    rand_conv = randomized_df.groupby('treated')['purchased'].mean()
-    lift_rand = rand_conv[1] - rand_conv[0]
-    ci_lower_rand, ci_upper_rand = lift_rand - 0.02, lift_rand + 0.02
-    
-    # Naive data
-    naive_conv = biased_df.groupby('treated')['purchased'].mean()
-    lift_naive = naive_conv[1] - naive_conv[0]
-    ci_lower_naive, ci_upper_naive = lift_naive - 0.03, lift_naive + 0.03
+    col_comparison_bar, col_comparison_ci = st.columns([1.5, 1])
 
     # --- 1. Consolidated Conversion Bar Chart ---
     with col_comparison_bar:
@@ -964,38 +952,34 @@ with tab_experiment:
         
         fig_conv = go.Figure()
 
-        scenarios = ['Randomized Test', 'Naive (Biased)']
-        lifts = [lift_rand, lift_naive]
-        colors = ['#2ecc71', '#e74c3c'] # Green for good, Red for bad
-        controls = [rand_conv[0], naive_conv[0]]
-        treatments = [rand_conv[1], naive_conv[1]]
-        
-        # Add Control Group Bars
         fig_conv.add_trace(go.Bar(
             name='Control',
-            x=['Randomized Test', 'Naive (Biased)'],
-            y=[rand_conv[0], naive_conv[0]],
+            x=scenarios,
+            y=control_rates,
             marker_color='#94a3b8',
-            text=[f"{rand_conv[0]:.1%}", f"{naive_conv[0]:.1%}"],
+            opacity=0.7,
+            text=[f'{r:.2%}' for r in control_rates],
             textposition='outside'
         ))
-        
-        # Add Treatment Group Bars
+
         fig_conv.add_trace(go.Bar(
             name='Treatment',
-            x=['Randomized Test', 'Naive (Biased)'],
-            y=[rand_conv[1], naive_conv[1]],
-            marker_color=['#6366f1', '#6366f1'], # Indigo for Truth, Rose for Bias
-            text=[f"{rand_conv[1]:.1%}", f"{naive_conv[1]:.1%}"],
+            x=scenarios,
+            y=treatment_rates,
+            marker_color=['#6366f1', '#6366f1'],
+            opacity=0.7,
+            text=[f'{r:.2%}' for r in treatment_rates],
             textposition='outside'
         ))
 
         # Add Lift Annotations (The floating "Difference" labels)
+        colors = ['#2ecc71', '#e74c3c'] # Green for good, Red for bad
+        controls = [ab_test_randomized_results['control_rate'], ab_test_biased_results['control_rate']]
+        treatments = [ab_test_randomized_results['treatment_rate'], ab_test_biased_results['treatment_rate']]
         for i, scenario in enumerate(scenarios):
             lift_val = lifts[i]
             # Choose color based on scenario
             text_color = colors[i]
-            
             fig_conv.add_annotation(
                 x=scenario,
                 # Position the label slightly above the taller bar
@@ -1016,12 +1000,12 @@ with tab_experiment:
             font=dict(family="Inter, sans-serif", color='#94a3b8'),
             height=350,
             margin=dict(t=40, b=0, l=0, r=0),
-            yaxis=dict(range=[0, 1.1], showticklabels=False, showgrid=False),
+            yaxis=dict(range=[0, 1.1]),
             legend=dict(
-                orientation="h", 
-                yanchor="bottom", 
-                y=1.02, 
-                xanchor="right", 
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
                 x=1,
                 font=dict(size=10)
             )
@@ -1030,58 +1014,60 @@ with tab_experiment:
 
     # --- 2. Consolidated Lift CI Chart ---
     with col_comparison_ci:
-        st.markdown('<div class="chart-title" style="font-size:0.9rem;">Conversion Rates: Lift Comparison (CI)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="chart-title" style="font-size:0.9rem;">Lift Comparison (95% CI)</div>', unsafe_allow_html=True)
         
         fig_ci = go.Figure()
 
-        # Randomized Lift Point
-        fig_ci.add_trace(go.Scatter(
-            x=['Randomized', 'Naive'], # Set x-coordinates
-            y=[lift_rand, None],       # Only plot first point
-            name='True Lift',
-            error_y=dict(type='data', symmetric=False, 
-                         array=[ci_upper_rand - lift_rand], 
-                         arrayminus=[lift_rand - ci_lower_rand], 
-                         thickness=3, width=10),
-            mode='markers', marker=dict(size=14, color='#2ecc71'),
-            showlegend=False
-        ))
-
-        # Naive Lift Point
-        fig_ci.add_trace(go.Scatter(
-            x=['Naive'], y=[lift_naive],
-            name='Naive Lift',
-            error_y=dict(type='data', symmetric=False, 
-                         array=[ci_upper_naive - lift_naive], 
-                         arrayminus=[lift_naive - ci_lower_naive], 
-                         thickness=3, width=10),
-            mode='markers', marker=dict(size=14, color='#f43f5e'),
-            showlegend=False
-        ))
-
-        fig_ci.add_hline(y=0, line_dash="dash", line_color="#4a5568", line_width=2)
-
+        # 1. Add "No Effect" line for the legend
         fig_ci.add_trace(go.Scatter(
             x=[None], y=[None],
             mode='lines',
-            line=dict(color='#4a5568', dash='dash', width=2),
-            name='No effect',
-            showlegend=True
+            line=dict(color='red', dash='dash', width=2),
+            name='No effect'
         ))
-        
+
+        # 2. Add both points using explicit coordinates
+        # We loop through the scenarios and plot them at their respective X positions
+        for i, scenario in enumerate(scenarios):
+            fig_ci.add_trace(go.Scatter(
+                x=[scenario], # Ensure this matches the string in scenarios exactly
+                y=[lifts[i]],
+                error_y=dict(
+                    type='data', 
+                    symmetric=False,
+                    array=[uppers[i] - lifts[i]],
+                    arrayminus=[lifts[i] - lowers[i]],
+                    thickness=2, 
+                    width=10,
+                    color='#2ecc71' if sigs[i] else '#95a5a6'
+                ),
+                mode='markers',
+                marker=dict(size=14, color='#2ecc71' if sigs[i] else '#95a5a6'),
+                name=scenario,
+                showlegend=False
+            ))
+
+        # 3. Add the actual horizontal zero line
+        fig_ci.add_hline(y=0, line_dash="dash", line_color="red", line_width=2)
+
         fig_ci.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             font=dict(family="Inter, sans-serif", color='#94a3b8'),
             height=350,
             margin=dict(t=40, b=40, l=40, r=20),
-            # Narrow the X-axis range to bring points closer together
             xaxis=dict(
+                type='category', # Explicitly set to category
+                categoryorder='array',
+                categoryarray=scenarios,
                 gridcolor='#2d3748',
-                range=[-0.5, 1.5], # Constrains the space around the two points
-                fixedrange=True
+                range=[-0.5, 1.5] # Adds padding so points aren't on the edges
             ),
-            yaxis=dict(gridcolor='#2d3748', title="Lift Value (pp)"),
+            yaxis=dict(
+                title='Lift (pp)',
+                gridcolor='#2d3748',
+                zeroline=False
+            ),
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
@@ -1089,13 +1075,12 @@ with tab_experiment:
                 xanchor="right",
                 x=1,
                 font=dict(size=10)
-            ),
-            showlegend=True
+            )
         )
         st.plotly_chart(fig_ci, use_container_width=True, config={'displayModeBar': False})
-
+    
     # Contextual Warning
-    st.warning(f"🚨 **The Illusion:** The Naive test suggests a lift of **{(lift_naive*100):.1f}%**, while the True lift is only **{(lift_rand*100):.1f}%**. This happens because we treated users who were going to buy anyway!")
+    st.warning(f"🚨 **The Illusion:** The Naive test suggests a lift of **{(lifts[1]*100):.1f}%**, while the True lift is only **{(lifts[0]*100):.1f}%**. This happens because we treated users who were going to buy anyway!")
 
     col_hist, col_stats = st.columns([1.6, 1])
 
