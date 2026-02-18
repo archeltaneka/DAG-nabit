@@ -294,7 +294,7 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 
 @st.cache_data
-def load_data(n_customers, discount_amount, ab_proportion, random_seed, include_noise):
+def load_data(n_customers, random_seed, include_noise):
     """
     Generate customer population and simulate experiment.
     Cached to prevent regeneration on every interaction.
@@ -352,17 +352,49 @@ def load_ab_test_data(_simulator, ab_proportion, discount_amount, control_rate, 
     # Run on biased data
     observational_results = observational_study.check_balance(biased_experiment_data)
 
-    return sample_sizes, ab_test_randomized_results, ab_test_biased_results, observational_results
+    return sample_sizes, random_experiment_data, ab_test_randomized_results, biased_experiment_data, ab_test_biased_results, observational_results
 
 @st.cache_data
-def load_multi_arm_data(n_per_arm, discount_amount, random_seed, include_noise):
-    pass
+def load_multi_arm_data(n_per_arm, discount_amounts, random_seed, include_noise):
+    arms_data = []
+    for arm_name, discount in discount_amounts.items():
+        
+        # Generate customers for this arm
+        arm_config = SimulationConfig(n_customers=n_per_arm, random_seed=random_seed+int(discount*100))
+        arm_customers = generate_customer_data(arm_config)
+        
+        # Simulate with this discount level
+        arm_sim = BehaviorSimulator(arm_customers, arm_config)
+        arm_exp = arm_sim.simulate_experiment(
+            treatment_assignment='random',
+            discount_amount=discount
+        )
+        
+        arm_exp['arm'] = arm_name
+        arms_data.append(arm_exp)
+
+    multi_arm_data = pd.concat(arms_data, ignore_index=True)
+    multi_arm_data['discount_level'] = multi_arm_data['arm'].map(discount_amounts)
+
+    dose_exp = DoseResponseExperiment(doses=list(discount_amounts.values()))
+    dose_results = dose_exp.analyze(multi_arm_data, 'discount_level', 'purchased')
+    
+    return dose_results
 
 # -----------------------------------------------------------------------------
 # Sidebar
 # -----------------------------------------------------------------------------
 
 with st.sidebar:
+    # Initialize custom discounts in session state
+    if 'custom_discounts' not in st.session_state:
+        st.session_state.custom_discounts = {
+            'Control': 0.0,
+            'Discount 10%': 0.10,
+            'Discount 20%': 0.20,
+            'Discount 30%': 0.30
+        }
+
     # Sidebar header
     st.markdown("""
         <div class="sidebar-header">
@@ -462,6 +494,28 @@ with st.sidebar:
         help="Number of customers to simulate per arm"
     )
 
+    available_discounts = {
+        'control': 0.0,
+        'discount_10': 0.10,
+        'discount_20': 0.20,
+        'discount_30': 0.30
+    }
+    selected_arms = st.sidebar.multiselect(
+        "Select Arms to Compare",
+        options=list(st.session_state.custom_discounts.keys()),
+        default=list(st.session_state.custom_discounts.keys())
+    )
+
+    with st.sidebar.expander("Add Custom Arm"):
+        new_label = st.text_input("Arm Name", placeholder="e.g., Flash Sale")
+        new_val = st.number_input("Discount Value", min_value=0.0, max_value=1.0, value=0.15, step=0.01)
+        
+        if st.button("Add to Experiment"):
+            if new_label and new_label not in st.session_state.custom_discounts:
+                st.session_state.custom_discounts[new_label] = new_val
+            st.success(f"Added {new_label}!")
+            st.rerun() # Refresh to update the multiselect options
+
     st.markdown("---")
     
     # Toggles
@@ -472,10 +526,12 @@ with st.sidebar:
 random_seed = st.session_state.get("random_seed", 42)
 
 # Load Data
-customers, simulator = load_data(n_customers, discount_amount, ab_proportion, random_seed, include_noise)
+customers, simulator = load_data(n_customers, random_seed, include_noise)
 
 # Load AB Test Data
-sample_sizes, ab_test_randomized_results, ab_test_biased_results, observational_results = load_ab_test_data(simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta)
+sample_sizes, random_experiment_data, ab_test_randomized_results, biased_experiment_data, ab_test_biased_results, observational_results = load_ab_test_data(simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta)
+
+dose_results = load_multi_arm_data(n_per_arm, st.session_state.custom_discounts, random_seed, include_noise)
 
 # -----------------------------------------------------------------------------
 # Main Application
@@ -1096,9 +1152,9 @@ with tab_experiment:
 
 
         # Calculate means for the lines
-        mean_control = biased_df[biased_df['treated'] == 0]['activity_score'].mean()
-        mean_treated = biased_df[biased_df['treated'] == 1]['activity_score'].mean()
-        plot_df = biased_df.copy()
+        mean_control = biased_experiment_data[biased_experiment_data['treated'] == 0]['activity_score'].mean()
+        mean_treated = biased_experiment_data[biased_experiment_data['treated'] == 1]['activity_score'].mean()
+        plot_df = biased_experiment_data.copy()
         plot_df['Group'] = plot_df['treated'].map({0: 'Control', 1: 'Treated'})
 
         # 2. Update the histogram
@@ -1214,50 +1270,104 @@ with tab_experiment:
             </div>
         """, unsafe_allow_html=True)
 
-    doses = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
-    results = []
-    
-    config_temp = SimulationConfig(n_customers=1000, random_seed=random_seed)
-    cust_temp = generate_customer_data(config_temp)
-    sim_temp = BehaviorSimulator(cust_temp, config_temp)
-    
-    for d in doses:
-        d_df = sim_temp.simulate_experiment(treatment_assignment='random', discount_amount=d)
-        conv_rate = d_df[d_df['treated']==1]['purchased'].mean()
-        results.append({'Discount': d, 'Conversion': conv_rate})
-        
-    dr_df = pd.DataFrame(results)
-    
-    fig_dr = px.line(
-        dr_df, 
-        x="Discount", 
-        y="Conversion", 
-        markers=True,
-    )
-    
-    fig_dr.update_traces(
-        line_color='#667eea',
-        marker=dict(size=10, color='#667eea')
-    )
-    
-    fig_dr.update_layout(
-        plot_bgcolor='#0f1419',
-        paper_bgcolor='#0f1419',
-        font_color='#e4e7eb',
-        height=400,
+    doses = []
+    means = []
+    ses = []
+
+    for dose, stats in sorted(dose_results['dose_response'].items()):
+        doses.append(dose)
+        means.append(stats['mean'])
+        ses.append(stats['std'] / np.sqrt(stats['count']))
+
+    doses = np.array(doses)
+    means = np.array(means)
+    ses = np.array(ses)
+
+    # Create smooth linear fit line
+    x_smooth = np.linspace(min(doses), max(doses), 100)
+    linear_fit = (dose_results['linear_model']['intercept'] + 
+                dose_results['linear_model']['slope'] * x_smooth)
+
+    # 2. Build the Plotly Figure
+    fig_dose = go.Figure()
+
+    # Add Confidence Interval (Shaded Area)
+    fig_dose.add_trace(go.Scatter(
+        x=np.concatenate([doses, doses[::-1]]),
+        y=np.concatenate([means + ses, (means - ses)[::-1]]),
+        fill='toself',
+        fillcolor='rgba(56, 189, 248, 0.1)',
+        line=dict(color='rgba(255,255,255,0)'),
+        hoverinfo="skip",
+        showlegend=True,
+        name='Standard Error'
+    ))
+
+    # Add Observed Line & Points
+    fig_dose.add_trace(go.Scatter(
+        x=doses, y=means,
+        mode='lines+markers',
+        name='Observed',
+        line=dict(color='#38bdf8', width=3),
+        marker=dict(size=10, line=dict(color='#0f1419'))
+    ))
+
+    # Add Linear Fit (Dashed)
+    fig_dose.add_trace(go.Scatter(
+        x=x_smooth, y=linear_fit,
+        mode='lines',
+        name='Linear Fit',
+        line=dict(color='#f43f5e', dash='dash', width=2)
+    ))
+
+    # Highlight Optimal Point (Gold Star)
+    fig_dose.add_trace(go.Scatter(
+        x=[dose_results['optimal_dose']],
+        y=[dose_results['optimal_response']],
+        mode='markers',
+        name='Optimal',
+        marker=dict(
+            symbol='star', size=18, color='#fbbf24', 
+            line=dict(color='#0f1419', width=2)
+        )
+    ))
+
+    fig_dose.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(family="Inter, sans-serif", color='#94a3b8'),
+        height=500,
+        margin=dict(t=40, b=40, l=40, r=20),
+        hovermode='x unified',
         xaxis=dict(
-            showgrid=True,
+            title="Discount Level",
+            tickformat='.0%',
             gridcolor='#2d3748',
-            title='Discount Amount'
+            zeroline=False
         ),
         yaxis=dict(
-            showgrid=True,
-            gridcolor='#2d3748',
-            title='Conversion Rate'
+            title="Conversion Rate",
+            tickformat='.1%',
+            gridcolor='#2d3748'
+        ),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
         )
     )
-    
-    st.plotly_chart(fig_dr, use_container_width=True)
+
+    # Render Chart
+    st.plotly_chart(fig_dose, use_container_width=True, config={'displayModeBar': False})
+
+    # Business Implication Footer
+    st.markdown(f"""
+        <div style="background-color: rgba(251, 191, 36, 0.1); border-left: 4px solid #fbbf24; padding: 1.2rem; border-radius: 4px; margin-top: 10px;">
+            <h4 style="margin: 0 0 10px 0; color: #fbbf24; font-size: 1rem;">🎯 Optimal Strategy: {dose_results['optimal_dose']:.0%} Discount</h4>
+            <p style="margin: 0; font-size: 0.9rem; color: #e4e7eb; line-height: 1.5;">
+                <b>Insight</b>: The relationship is <b>linear</b> (more discount = more lift). 
+                We recommend the <b>{dose_results['optimal_dose']:.0%}</b> offer to maximize lift without cannibalizing margin.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # Tab 3: Causal Inference Methods
@@ -1271,10 +1381,10 @@ with tab_inference:
     st.markdown("#### Method Comparison")
     
     # Calculations
-    treated_conv = biased_df[biased_df['treated']==1]['purchased'].mean()
-    control_conv = biased_df[biased_df['treated']==0]['purchased'].mean()
+    treated_conv = biased_experiment_data[biased_experiment_data['treated']==1]['purchased'].mean()
+    control_conv = biased_experiment_data[biased_experiment_data['treated']==0]['purchased'].mean()
     naive_ate = treated_conv - control_conv
-    true_ate = (biased_df['discount_effect'] * 0.20).mean()
+    true_ate = (biased_experiment_data['discount_effect'] * 0.20).mean()
     
     # Simulated corrections
     error = naive_ate - true_ate
@@ -1339,7 +1449,7 @@ with tab_inference:
         
     with col2:
         # Gain curve
-        sorted_df = biased_df.sort_values('discount_effect', ascending=False).reset_index()
+        sorted_df = biased_experiment_data.sort_values('discount_effect', ascending=False).reset_index()
         sorted_df['cum_n'] = sorted_df.index + 1
         sorted_df['cum_lift'] = sorted_df['discount_effect'].cumsum()
         
