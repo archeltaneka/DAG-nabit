@@ -293,7 +293,7 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 
 @st.cache_data
-def load_data(n_customers, random_seed, include_noise, rare_events):
+def load_data(n_customers, discount_amount, random_seed, include_noise):
     """
     Generate customer population and simulate experiment.
     Cached to prevent regeneration on every interaction.
@@ -316,12 +316,12 @@ def load_data(n_customers, random_seed, include_noise, rare_events):
     random_experiment_data = simulator.simulate_experiment(
         treatment_assignment='random',
         treatment_probability=0.5,
-        discount_amount=0.20
+        discount_amount=discount_amount
     )
 
     biased_experiment_data = simulator.simulate_experiment(
         treatment_assignment='biased_activity',
-        discount_amount=0.20
+        discount_amount=discount_amount
     )
 
     # 3. Run Observational Study
@@ -363,6 +363,15 @@ with st.sidebar:
         step=1000,
         help="Number of customers to simulate"
     )
+
+    discount_amount = st.slider(
+        "Discount Amount",
+        min_value=0.01,
+        max_value=0.90,
+        value=0.20,
+        step=0.01,
+        help="Discount amount to apply to customers"
+    )
     
     st.number_input(
         "Simulation Seed",
@@ -376,7 +385,6 @@ with st.sidebar:
     
     # Toggles
     include_noise = st.toggle("Include Noise", value=True, help="Add random noise to activity scores")
-    rare_events = st.toggle("Rare Events", value=False, help="Include rare customer behaviors")
     
     st.markdown("---")
     
@@ -392,8 +400,7 @@ with st.sidebar:
 random_seed = st.session_state.get("random_seed", 42)
 
 # Load Data
-customers, randomized_df, biased_df, observational_results = load_data(n_customers, random_seed, include_noise, rare_events)
-print(observational_results)
+customers, randomized_df, biased_df, observational_results = load_data(n_customers, discount_amount, random_seed, include_noise)
 
 # -----------------------------------------------------------------------------
 # Main Application
