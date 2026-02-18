@@ -19,6 +19,7 @@ from data.generators.customer_generator import generate_customer_data
 from data.generators.behavior_simulator import BehaviorSimulator
 from experiments.observational_study import ObservationalStudy, ObservationalStudyConfig
 from experiments.multi_arm import DoseResponseExperiment
+from experiments.ab_test import ABTest, ABTestConfig
 
 # -----------------------------------------------------------------------------
 # Configuration & Setup
@@ -293,7 +294,7 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 
 @st.cache_data
-def load_data(n_customers, discount_amount, random_seed, include_noise):
+def load_data(n_customers, discount_amount, ab_proportion, random_seed, include_noise):
     """
     Generate customer population and simulate experiment.
     Cached to prevent regeneration on every interaction.
@@ -315,7 +316,7 @@ def load_data(n_customers, discount_amount, random_seed, include_noise):
     
     random_experiment_data = simulator.simulate_experiment(
         treatment_assignment='random',
-        treatment_probability=0.5,
+        treatment_probability=ab_proportion,
         discount_amount=discount_amount
     )
 
@@ -323,8 +324,35 @@ def load_data(n_customers, discount_amount, random_seed, include_noise):
         treatment_assignment='biased_activity',
         discount_amount=discount_amount
     )
+    
+    return customers, random_experiment_data, biased_experiment_data, simulator
 
-    # 3. Run Observational Study
+@st.cache_data
+def load_ab_test_data(_simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta):
+    test_config = ABTestConfig(
+        control_rate=control_rate,             
+        minimum_detectable_effect=minimum_detectable_effect, 
+        alpha=alpha,                     
+        beta=beta                       
+    )
+    ab_test = ABTest(test_config)
+    sample_sizes = ab_test.calculate_sample_size()
+
+    # Run randomized (50/50) and biased A/B tests
+    random_experiment_data = simulator.simulate_experiment(
+        treatment_assignment='random',
+        treatment_probability=ab_proportion,
+        discount_amount=discount_amount
+    )
+    randomized_results = ab_test.run_test(random_experiment_data, treatment_col='treated', outcome_col='purchased')
+    
+    biased_experiment_data = simulator.simulate_experiment(
+        treatment_assignment='biased_activity',
+        discount_amount=discount_amount
+    )
+    biased_results = ab_test.run_test(biased_experiment_data, treatment_col='treated', outcome_col='purchased')
+
+    # Run Observational Study
     study_config = ObservationalStudyConfig(
         treatment_col='treated',
         outcome_col='purchased',
@@ -335,8 +363,12 @@ def load_data(n_customers, discount_amount, random_seed, include_noise):
     
     # Run on biased data
     observational_results = observational_study.check_balance(biased_experiment_data)
-    
-    return customers, random_experiment_data, biased_experiment_data, observational_results
+
+    return sample_sizes, randomized_results, biased_results, observational_results
+
+@st.cache_data
+def load_multi_arm_data(n_per_arm, discount_amount, random_seed, include_noise):
+    pass
 
 # -----------------------------------------------------------------------------
 # Sidebar
@@ -373,7 +405,7 @@ with st.sidebar:
         help="Discount amount to apply to customers"
     )
     
-    st.number_input(
+    random_seed = st.number_input(
         "Simulation Seed",
         value=42,
         min_value=1,
@@ -382,25 +414,80 @@ with st.sidebar:
     )
     
     st.markdown("---")
+
+    st.markdown("**A/B Test Params**")
+
+    control_rate = st.slider(
+        "Control Group Conversion Rate",
+        min_value=0.01,
+        max_value=1.00,
+        value=0.10,
+        step=0.01,
+        help="Conversion rate of the control group"
+    )
+
+    alpha = st.slider(
+        "Alpha",
+        min_value=0.01,
+        max_value=1.00,
+        value=0.05,
+        step=0.01,
+        help="Significance level"
+    )
+
+    minimum_detectable_effect = st.slider(
+        "Minimum Detectable Effect",
+        min_value=0.01,
+        max_value=1.00,
+        value=0.10,
+        step=0.01,
+        help="Minimum detectable effect"
+    )
+
+    beta = st.slider(
+        "Beta",
+        min_value=0.01,
+        max_value=1.00,
+        value=0.20,
+        step=0.01,
+        help="Power of the test"
+    )
+
+    ab_proportion = st.slider(
+        "Proportion of Customers Getting Treatment",
+        min_value=0.01,
+        max_value=1.00,
+        value=0.50,
+        step=0.01,
+        help="If the value is 0.5, 50% of the customers will get the treatment"
+    )
+
+    st.markdown("---")
+
+    st.markdown("**Multi-Arm Bandit Params**")
+    n_per_arm = st.slider(
+        "Number of Customers per Arm",
+        min_value=100,
+        max_value=5000,
+        value=1000,
+        step=100,
+        help="Number of customers to simulate per arm"
+    )
+
+    st.markdown("---")
     
     # Toggles
     include_noise = st.toggle("Include Noise", value=True, help="Add random noise to activity scores")
     
-    st.markdown("---")
-    
-    # Generate button
-    if st.button("⚡ Generate Population", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-    
-    # Last generated timestamp
-    st.caption("Last generated: 2 mins ago")
 
 # Get simulation parameters
 random_seed = st.session_state.get("random_seed", 42)
 
 # Load Data
-customers, randomized_df, biased_df, observational_results = load_data(n_customers, discount_amount, random_seed, include_noise)
+customers, randomized_df, biased_df, simulator = load_data(n_customers, discount_amount, ab_proportion, random_seed, include_noise)
+
+# Load AB Test Data
+sample_sizes, randomized_results, biased_results, observational_results = load_ab_test_data(simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta)
 
 # -----------------------------------------------------------------------------
 # Main Application
@@ -799,7 +886,55 @@ with tab_simulation:
 # -----------------------------------------------------------------------------
 
 with tab_experiment:
-    
+    st.markdown("""
+        <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
+            <h3 style="color: #e4e7eb; margin-top: 0;">✅ Test Planning</h3>
+            <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
+                <b>Question</b>: "How many customers do I need to detect an x% lift?"<br/>
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col_biz, col_stat, col_sample = st.columns(3)
+
+    with col_biz:
+        st.markdown(f"""
+            <p style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Business Context</p>
+            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Base Conv. Rate: <b style="color: #38bdf8;">{control_rate * 100}%</b></p>
+            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Min. Meaningful Lift: <b style="color: #22c55e;">{minimum_detectable_effect * 100}%</b></p>
+            <p style="color: #64748b; font-size: 0.8rem; font-style: italic;">(Targeting {control_rate * 100}% → {(control_rate * minimum_detectable_effect*100)+control_rate*100}%)</p>
+        """, unsafe_allow_html=True)
+
+    with col_stat:
+        st.markdown(f"""
+            <p style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Statistical Requirements</p>
+            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Significance (α): <b style="color: #fbbf24;">{alpha}</b></p>
+            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Power (1-β): <b style="color: #fbbf24;">{beta}</b></p>
+            <p style="color: #64748b; font-size: 0.8rem; font-style: italic;">(Standard Rigor)</p>
+        """, unsafe_allow_html=True)
+
+    with col_sample:
+        st.markdown(f"""
+            <p style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Required Sample Size</p>
+            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Control Group: <b>{sample_sizes['n_control']}</b></p>
+            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Treatment Group: <b>{sample_sizes['n_treatment']}</b></p>
+            <p style="color: #e4e7eb; margin: 0; font-size: 1.1rem; font-weight: 700;">Total: <span style="color: #6366f1;">{sample_sizes['n_control'] + sample_sizes['n_treatment']}</span></p>
+        """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #334155; display: flex; align-items: center;">
+                <div style="background: rgba(99, 102, 241, 0.2); color: #818cf8; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; margin-right: 12px;">
+                    💡 BUSINESS TRANSLATION
+                </div>
+                <p style="color: #cbd5e1; margin: 0; font-size: 0.9rem;">
+                    With {n_customers} daily visitors, you need <b>{sample_sizes['n_total'] / n_customers:.2f} days</b> to run this test with proper statistical power.
+                </p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
     st.markdown("""
         <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
             <h3 style="color: #e4e7eb; margin-top: 0;">🧪 The A/B Test Paradox</h3>
@@ -816,12 +951,12 @@ with tab_experiment:
     # Randomized data
     rand_conv = randomized_df.groupby('treated')['purchased'].mean()
     lift_rand = rand_conv[1] - rand_conv[0]
-    ci_lower_rand, ci_upper_rand = lift_rand - 0.02, lift_rand + 0.02 # Replace with your math
+    ci_lower_rand, ci_upper_rand = lift_rand - 0.02, lift_rand + 0.02
     
     # Naive data
     naive_conv = biased_df.groupby('treated')['purchased'].mean()
     lift_naive = naive_conv[1] - naive_conv[0]
-    ci_lower_naive, ci_upper_naive = lift_naive - 0.03, lift_naive + 0.03 # Replace with your math
+    ci_lower_naive, ci_upper_naive = lift_naive - 0.03, lift_naive + 0.03
 
     # --- 1. Consolidated Conversion Bar Chart ---
     with col_comparison_bar:
