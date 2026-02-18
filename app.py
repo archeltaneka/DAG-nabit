@@ -435,8 +435,11 @@ def perform_causal_inference(random_experiment_data, biased_experiment_data, dis
     results_df = pd.DataFrame(results)
     results_df['Error_pct'] = (results_df['Error'] / abs(true_ate)) * 100
     results_df['Accuracy'] = 100 - results_df['Error_pct']
+
+    # Segment customers based on uplift
+    segmented = uplift_model.segment_customers(biased_experiment_data)
     
-    return results_df
+    return results_df, segmented
 
 # -----------------------------------------------------------------------------
 # Sidebar
@@ -587,7 +590,7 @@ customers, simulator = load_data(n_customers, random_seed, include_noise)
 sample_sizes, random_experiment_data, ab_test_randomized_results, biased_experiment_data, ab_test_biased_results, observational_results = perform_ab_test(simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta)
 dose_results = perform_multi_arm_exp(n_per_arm, st.session_state.custom_discounts, random_seed)
 # Causal inference
-causal_inference_results = perform_causal_inference(random_experiment_data, biased_experiment_data, discount_amount)
+causal_inference_results, segmented = perform_causal_inference(random_experiment_data, biased_experiment_data, discount_amount)
 
 # -----------------------------------------------------------------------------
 # Main Application
@@ -1579,67 +1582,165 @@ with tab_inference:
     """, unsafe_allow_html=True)
     
     # Uplift section
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### 🎯 Targeting Optimization (Uplift)")
+    st.markdown("### Cumulative Gain Logic")        
+    st.markdown("""
+    If we target customers sorted by their **predicted uplift** (highest to lowest),
+    how much total value do we capture compared to random targeting?
     
-    col1, col2 = st.columns([1, 2])
+    The area between the curves represents the **Value of Personalization**.
+    """)
+        
+    # Gain curve
+    sorted_df = biased_experiment_data.sort_values('discount_effect', ascending=False).reset_index()
+    sorted_df['cum_n'] = sorted_df.index + 1
+    sorted_df['cum_lift'] = sorted_df['discount_effect'].cumsum()
     
-    with col1:
-        st.markdown("**Cumulative Gain Logic**")
-        st.markdown("""
-        If we target customers sorted by their **predicted uplift** (highest to lowest),
-        how much total value do we capture compared to random targeting?
-        
-        The area between the curves represents the **Value of Personalization**.
-        """)
-        
-    with col2:
-        # Gain curve
-        sorted_df = biased_experiment_data.sort_values('discount_effect', ascending=False).reset_index()
-        sorted_df['cum_n'] = sorted_df.index + 1
-        sorted_df['cum_lift'] = sorted_df['discount_effect'].cumsum()
-        
-        total_lift = sorted_df['discount_effect'].sum()
-        sorted_df['random_lift'] = (sorted_df['cum_n'] / len(sorted_df)) * total_lift
-        
-        fig_gain = go.Figure()
-        
-        fig_gain.add_trace(go.Scatter(
-            x=sorted_df['cum_n'], 
-            y=sorted_df['cum_lift'], 
-            mode='lines', 
-            name='Uplift Model (Perfect)',
-            line=dict(color='#667eea', width=3)
-        ))
-        
-        fig_gain.add_trace(go.Scatter(
-            x=sorted_df['cum_n'], 
-            y=sorted_df['random_lift'], 
-            mode='lines', 
-            name='Random Targeting',
-            line=dict(color='#94a3b8', width=2, dash='dash')
-        ))
-        
-        fig_gain.update_layout(
-            plot_bgcolor='#0f1419',
-            paper_bgcolor='#0f1419',
-            font_color='#e4e7eb',
-            height=400,
-            xaxis=dict(
-                showgrid=True,
-                gridcolor='#2d3748',
-                title='Customers Targeted'
-            ),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='#2d3748',
-                title='Cumulative Lift Captured'
-            ),
+    total_lift = sorted_df['discount_effect'].sum()
+    sorted_df['random_lift'] = (sorted_df['cum_n'] / len(sorted_df)) * total_lift
+    
+    fig_gain = go.Figure()
+    
+    fig_gain.add_trace(go.Scatter(
+        x=sorted_df['cum_n'], 
+        y=sorted_df['cum_lift'], 
+        mode='lines', 
+        name='Uplift Model (Perfect)',
+        line=dict(color='#667eea', width=3)
+    ))
+    
+    fig_gain.add_trace(go.Scatter(
+        x=sorted_df['cum_n'], 
+        y=sorted_df['random_lift'], 
+        mode='lines', 
+        name='Random Targeting',
+        line=dict(color='#94a3b8', width=2, dash='dash')
+    ))
+    
+    fig_gain.update_layout(
+        plot_bgcolor='#0f1419',
+        paper_bgcolor='#0f1419',
+        font_color='#e4e7eb',
+        height=400,
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='#2d3748',
+            title='Customers Targeted'
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='#2d3748',
+            title='Cumulative Lift Captured'
+        ),
+        legend=dict(
+            bgcolor='rgba(26, 31, 46, 0.8)',
+            bordercolor='#2d3748',
+            borderwidth=1
+        )
+    )
+    
+    st.plotly_chart(fig_gain, use_container_width=True)
+
+    st.markdown("### Uplift Distribution by Predicted Segment")        
+    st.markdown("""
+    Persuadables (positive uplift) are the only group where a discount drives a net-new purchase. 
+    Conversely, Sleeping Dogs (negative uplift) are likely to be annoyed or unsubscribed by the same offer, leading to a loss in value.
+    """)
+
+    # Base histogram
+    segment_colors = {
+        "Neutral": "#38bdf8",
+        "Persuadable": "#22c55e",
+        "Sleeping Dog": "#ec4899",
+        "Weak Responder": "#fbbf24"
+    }
+
+    col_chart, col_table = st.columns([2, 1]) # Histogram gets more space
+
+    with col_chart:
+        segment_fig = px.histogram(
+            segmented, 
+            x="predicted_uplift", 
+            color="predicted_segment",
+            nbins=100,
+            barmode='overlay',  # Overlays bars (like alpha=0.5 in matplotlib)
+            opacity=0.6,
+            labels={'predicted_uplift': 'Predicted Uplift', 'predicted_segment': 'Segment'},
+            color_discrete_map=segment_colors,
+            category_orders={"predicted_segment": ["Neutral", "Persuadable", "Sleeping Dog", "Weak Responder"]}
+        )
+
+        #  Add the vertical "No Effect" line
+        segment_fig.add_vline(
+            x=0, 
+            line_dash="dash", 
+            line_color="red", 
+            line_width=2,
+            annotation_text="Zero Uplift", 
+            annotation_position="top left"
+        )
+
+        # Customizing the layout to match your dashboard style
+        segment_fig.update_layout(
+            title="<b>Uplift Distribution by Predicted Segment</b>",
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter, sans-serif", color='#94a3b8'),
             legend=dict(
-                bgcolor='rgba(26, 31, 46, 0.8)',
-                bordercolor='#2d3748',
-                borderwidth=1
-            )
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            margin=dict(t=80, b=40, l=40, r=20),
+            height=400,
+            hovermode='x unified'
         )
         
-        st.plotly_chart(fig_gain, use_container_width=True)
+        # Clean up axes
+        segment_fig.update_xaxes(showgrid=True, gridcolor='#2d3748', zeroline=False)
+        segment_fig.update_yaxes(showgrid=True, gridcolor='#2d3748', title="Count")
+
+        st.plotly_chart(segment_fig, use_container_width=True)
+
+    with col_table:
+        segment_counts = segmented['predicted_segment'].value_counts()
+        total_count = len(segmented)
+
+        # Creating a clean DataFrame for the table
+        table_data = []
+        for segment, color in segment_colors.items():
+            count = segment_counts.get(segment, 0)
+            percentage = (count / total_count) * 100
+            avg_uplift = segmented[segmented['predicted_segment'] == segment]['predicted_uplift'].mean()
+    
+            table_data.append({
+                "Segment": segment,
+                "Users": f"{count:,}",
+                "Share": f"{percentage:.1f}%",
+                "Avg. Uplift": f"{avg_uplift:+.2%}"
+            })
+
+        def color_segments(val):
+            color = segment_colors.get(val, "")
+            return f'background-color: {color}; color: black; font-weight: bold'
+
+        # Apply styling
+        table_data = pd.DataFrame(table_data)
+        table_data = table_data.style.applymap(color_segments, subset=['Segment'])
+
+        st.markdown("<br><br>", unsafe_allow_html=True) # Vertical alignment
+        st.write("### Segment Breakdown")
+        
+        # Custom CSS to inject the segment colors as small indicators
+        st.dataframe(
+            table_data,
+            column_config={
+                "Segment": st.column_config.TextColumn("Segment"),
+                "Share": st.column_config.ProgressColumn("Share", format="%s", min_value=0, max_value=100),
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+        
+        st.caption("Targeting **Persuadables** maximizes ROI, while avoiding **Sleeping Dogs** prevents churn.")
