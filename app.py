@@ -17,9 +17,14 @@ import textwrap
 from data.generators.config import SimulationConfig, SEGMENT_PARAMS
 from data.generators.customer_generator import generate_customer_data
 from data.generators.behavior_simulator import BehaviorSimulator
+
 from experiments.observational_study import ObservationalStudy, ObservationalStudyConfig
 from experiments.multi_arm import DoseResponseExperiment
 from experiments.ab_test import ABTest, ABTestConfig
+
+from causal_analysis.propensity_score import PropensityScoreMatcher
+from causal_analysis.double_ml import DoubleMachineLearning
+from causal_analysis.uplift_model import UpliftModel
 
 # -----------------------------------------------------------------------------
 # Configuration & Setup
@@ -316,7 +321,7 @@ def load_data(n_customers, random_seed, include_noise):
     return customers, simulator
 
 @st.cache_data
-def load_ab_test_data(_simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta):
+def perform_ab_test(_simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta):
     test_config = ABTestConfig(
         control_rate=control_rate,             
         minimum_detectable_effect=minimum_detectable_effect, 
@@ -355,7 +360,7 @@ def load_ab_test_data(_simulator, ab_proportion, discount_amount, control_rate, 
     return sample_sizes, random_experiment_data, ab_test_randomized_results, biased_experiment_data, ab_test_biased_results, observational_results
 
 @st.cache_data
-def load_multi_arm_data(n_per_arm, discount_amounts, random_seed, include_noise):
+def perform_multi_arm_exp(n_per_arm, discount_amounts, random_seed):
     arms_data = []
     for arm_name, discount in discount_amounts.items():
         
@@ -380,6 +385,58 @@ def load_multi_arm_data(n_per_arm, discount_amounts, random_seed, include_noise)
     dose_results = dose_exp.analyze(multi_arm_data, 'discount_level', 'purchased')
     
     return dose_results
+
+@st.cache_data
+def perform_causal_inference(random_experiment_data, biased_experiment_data, discount_amount):
+    confounders = ['activity_score', 'tenure_months', 'prev_purchases', 'account_value']
+
+    # 1. Propensity Score Matching
+    psm = PropensityScoreMatcher(
+        confounders=confounders,
+        matching_method='nearest',
+        caliper=0.1  # Maximum distance for matching (in std dev)
+    )
+    _ = psm.fit_propensity_model(biased_experiment_data)
+    _ = psm.match(biased_experiment_data)
+    psm_results = psm.estimate_ate()
+
+    # 2. Double Machine Learning
+    dml = DoubleMachineLearning(
+        confounders=confounders,
+        model_type='linear', 
+        n_splits=2  
+    )
+    dml.fit(biased_experiment_data)
+    dml_results = dml.estimate_ate(biased_experiment_data)
+
+    # 3. Uplift Modelling
+    uplift_model = UpliftModel(
+        features=confounders + ['email_engagement_rate'],
+        meta_learner='x', 
+        base_model='xgboost'
+    )
+    uplift_model.fit(random_experiment_data) # Uplift Modelling needs a randomized data to fit
+    uplift_results = uplift_model.predict_uplift(biased_experiment_data)
+
+    uplift_ate = uplift_results.mean() # Average of individual predictions
+    naive_ate = (
+        biased_experiment_data[biased_experiment_data['treated']==1]['purchased'].mean() -
+        biased_experiment_data[biased_experiment_data['treated']==0]['purchased'].mean()
+    )
+    biased_experiment_data['true_ITE'] = biased_experiment_data['discount_effect'] * discount_amount
+    true_ate = biased_experiment_data['true_ITE'].mean()
+
+    results = {
+        'Method': ['Ground Truth', 'Naive (Biased)', 'Propensity Score Matching', 'Double Machine Learning', 'Uplift Modeling'],
+        'ATE': [true_ate, naive_ate, psm_results['ate'], dml_results['ate'], uplift_ate],
+        'Error': [0.0, abs(naive_ate - true_ate), abs(psm_results['ate'] - true_ate), abs(dml_results['ate'] - true_ate), abs(uplift_ate - true_ate)]
+    }
+
+    results_df = pd.DataFrame(results)
+    results_df['Error_pct'] = (results_df['Error'] / abs(true_ate)) * 100
+    results_df['Accuracy'] = 100 - results_df['Error_pct']
+    
+    return results_df
 
 # -----------------------------------------------------------------------------
 # Sidebar
@@ -524,14 +581,13 @@ with st.sidebar:
 
 # Get simulation parameters
 random_seed = st.session_state.get("random_seed", 42)
-
 # Load Data
 customers, simulator = load_data(n_customers, random_seed, include_noise)
-
-# Load AB Test Data
-sample_sizes, random_experiment_data, ab_test_randomized_results, biased_experiment_data, ab_test_biased_results, observational_results = load_ab_test_data(simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta)
-
-dose_results = load_multi_arm_data(n_per_arm, st.session_state.custom_discounts, random_seed, include_noise)
+# Perform AB Test & Multi-arm experiments
+sample_sizes, random_experiment_data, ab_test_randomized_results, biased_experiment_data, ab_test_biased_results, observational_results = perform_ab_test(simulator, ab_proportion, discount_amount, control_rate, minimum_detectable_effect, alpha, beta)
+dose_results = perform_multi_arm_exp(n_per_arm, st.session_state.custom_discounts, random_seed)
+# Causal inference
+causal_inference_results = perform_causal_inference(random_experiment_data, biased_experiment_data, discount_amount)
 
 # -----------------------------------------------------------------------------
 # Main Application
@@ -610,9 +666,6 @@ with tab_simulation:
     </div>
     """, unsafe_allow_html=True)
 
-    # Segment Profiles Header
-    st.markdown('<h2 style="color: #e4e7eb; margin-top: 1.5rem;">Segment Profiles</h2>', unsafe_allow_html=True)
-    
     # Calculate segment statistics
     segment_stats = customers.groupby('segment').agg({
         'base_purchase_propensity': 'mean',
@@ -1374,63 +1427,156 @@ with tab_experiment:
 # -----------------------------------------------------------------------------
 
 with tab_inference:
-    st.markdown("### 🕵️ Recovering the True Effect")
-    st.markdown("Using advanced methods to recover the true causal effect from biased data.")
+    st.markdown("""
+        <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
+            <h3 style="color: #e4e7eb; margin-top: 0;">Advanced Causal Estimators</h3>
+            <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
+                Since our A/B test was biased, we use these models to adjust for confounders and recover the <b>True Treatment Effect</b>. We introduce 3 approaches to solve this problem.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col_psm, col_dml, col_uplift = st.columns(3)
+
+    with col_psm:
+        st.markdown("""
+            <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid #6366f1; padding: 1.5rem; border-radius: 12px; height: 100%;">
+                <h3 style="color: #6366f1; font-size: 1.1rem; margin-top: 0;">🎯 Propensity Score Matching</h3>
+                <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6;">
+                    <b>The Strategy:</b> It mimics a randomized trial by pairing treated users with control users who had the <i>exact same probability</i> of being treated.
+                </p>
+                <ul style="color: #94a3b8; font-size: 0.85rem; padding-left: 1.2rem;">
+                    <li>Reduces selection bias.</li>
+                    <li>Creates a "synthetic" control group.</li>
+                    <li>Best for: Observational data with high imbalance.</li>
+                </ul>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col_dml:
+        st.markdown("""
+            <div style="background: rgba(45, 212, 191, 0.05); border: 1px solid #2dd4bf; padding: 1.5rem; border-radius: 12px; height: 100%;">
+                <h3 style="color: #2dd4bf; font-size: 1.1rem; margin-top: 0;">🤖 Double Machine Learning</h3>
+                <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6;">
+                    <b>The Strategy:</b> Uses two ML models to "partial out" the effects of covariates from both the treatment and the outcome.
+                </p>
+                <ul style="color: #94a3b8; font-size: 0.85rem; padding-left: 1.2rem;">
+                    <li>Handles high-dimensional data.</li>
+                    <li>Unbiased even with complex non-linear bias.</li>
+                    <li>Best for: Complex digital ecosystems.</li>
+                </ul>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col_uplift:
+        st.markdown("""
+            <div style="background: rgba(251, 191, 36, 0.05); border: 1px solid #fbbf24; padding: 1.5rem; border-radius: 12px; height: 100%;">
+                <h3 style="color: #fbbf24; font-size: 1.1rem; margin-top: 0;">🚀 Uplift Modeling</h3>
+                <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6;">
+                    <b>The Strategy:</b> Instead of predicting "will they buy?", it predicts "will the <i>discount</i> make them buy?" (Individual Treatment Effect).
+                </p>
+                <ul style="color: #94a3b8; font-size: 0.85rem; padding-left: 1.2rem;">
+                    <li>Identifies "Persuadables."</li>
+                    <li>Avoids wasting budget on "Sure Things."</li>
+                    <li>Best for: Personalized marketing & ROI.</li>
+                </ul>
+            </div>
+        """, unsafe_allow_html=True)
     
     # Method Comparison
-    st.markdown("#### Method Comparison")
+    st.markdown("### Method Comparison")
     
-    # Calculations
-    treated_conv = biased_experiment_data[biased_experiment_data['treated']==1]['purchased'].mean()
-    control_conv = biased_experiment_data[biased_experiment_data['treated']==0]['purchased'].mean()
-    naive_ate = treated_conv - control_conv
-    true_ate = (biased_experiment_data['discount_effect'] * 0.20).mean()
-    
-    # Simulated corrections
-    error = naive_ate - true_ate
-    psm_ate = true_ate + (error * 0.2) 
-    dml_ate = true_ate + (error * 0.05)
-    
-    methods_df = pd.DataFrame({
-        'Method': ['Naive', 'Propensity Score Matching', 'Double ML', 'Ground Truth'],
-        'Estimated Lift': [naive_ate, psm_ate, dml_ate, true_ate],
-        'Relative Error': [
-            abs(naive_ate-true_ate)/abs(true_ate) if true_ate != 0 else 0, 
-            abs(psm_ate-true_ate)/abs(true_ate) if true_ate != 0 else 0,
-            abs(dml_ate-true_ate)/abs(true_ate) if true_ate != 0 else 0,
-            0.0
-        ]
-    })
-    
-    fig_comp = go.Figure()
-    
-    colors_methods = ['#ef4444', '#f59e0b', '#667eea', '#22c55e']
-    
-    for i, row in methods_df.iterrows():
-        fig_comp.add_trace(go.Bar(
-            x=[row['Method']],
-            y=[row['Estimated Lift']],
-            name=row['Method'],
-            marker_color=colors_methods[i],
-            text=[f"{row['Estimated Lift']:.4f}"],
+    col_ate, col_error = st.columns([1.5, 1])
+
+    # --- 1. ATE Estimates (Horizontal Bar) ---
+    with col_ate:
+        st.markdown('<div class="chart-title" style="font-size:0.9rem;">Treatment Effect Estimates vs. Ground Truth</div>', unsafe_allow_html=True)
+        
+        methods = causal_inference_results['Method'].tolist()[1:]
+        ates = causal_inference_results['ATE'].tolist()[1:]
+        
+        fig_ate = go.Figure()
+
+        # Add the bars for each method
+        fig_ate.add_trace(go.Bar(
+            y=methods, # Skip the ground truth barplot
+            x=ates, # Skip the ground truth barplot
+            orientation='h',
+            marker_color=['#f43f5e', '#6366f1', '#2dd4bf', '#fbbf24'][:len(methods)],
+            opacity=0.8,
+            text=[f'{a:+.4f}' for a in ates],
             textposition='outside',
-            showlegend=False
+            cliponaxis=False
         ))
-    
-    fig_comp.update_layout(
-        plot_bgcolor='#0f1419',
-        paper_bgcolor='#0f1419',
-        font_color='#e4e7eb',
-        height=400,
-        xaxis=dict(showgrid=False),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor='#2d3748',
-            title='Estimated ATE'
+
+        # Add the Ground Truth Vertical Line
+        fig_ate.add_vline(
+            x=causal_inference_results['ATE'][0], 
+            line_dash="dash", 
+            line_color="#2ecc71", 
+            line_width=2,
+            annotation_text=f"Ground Truth: +{causal_inference_results['ATE'][0]:.4f}",
+            annotation_position="top left"
         )
-    )
+
+        fig_ate.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter, sans-serif", color='#94a3b8'),
+            height=400,
+            margin=dict(t=40, b=40, l=0, r=60),
+            xaxis=dict(title="Estimated ATE", gridcolor='#2d3748', zeroline=False),
+            yaxis=dict(autorange="reversed") # Keeps the order consistent with your df
+        )
+        st.plotly_chart(fig_ate, use_container_width=True, config={'displayModeBar': False})
+
+    # --- 2. Absolute Error Comparison ---
+    with col_error:
+        st.markdown('<div class="chart-title" style="font-size:0.9rem;">Estimation Error (Abs)</div>', unsafe_allow_html=True)
+        
+        # Exclude Ground Truth for the error plot if it exists in the DF
+        error_df = causal_inference_results[causal_inference_results['Method'] != 'Ground Truth']
+        
+        fig_err = go.Figure()
+
+        fig_err.add_trace(go.Bar(
+            x=error_df['Method'],
+            y=error_df['Error'],
+            marker_color=['#f43f5e', '#6366f1', '#2dd4bf', '#fbbf24'][:len(error_df)],
+            opacity=0.7,
+            text=[f'{e:.4f}' for e in error_df['Error']],
+            textposition='outside',
+            cliponaxis=False
+        ))
+
+        fig_err.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter, sans-serif", color='#94a3b8'),
+            height=400,
+            margin=dict(t=40, b=40, l=40, r=20),
+            xaxis=dict(gridcolor='#2d3748'),
+            yaxis=dict(title="Absolute Error", gridcolor='#2d3748')
+        )
+        st.plotly_chart(fig_err, use_container_width=True, config={'displayModeBar': False})
     
-    st.plotly_chart(fig_comp, use_container_width=True)
+    # Business Implication Footer
+    efficient_models = causal_inference_results[~causal_inference_results['Method'].isin(['Naive (Biased)', 'Ground Truth'])]
+    best_row = efficient_models.loc[efficient_models['ATE'].idxmax()]
+    best_method = best_row['Method']
+    best_ate = best_row['ATE']
+    best_error = best_row['Error']
+    target_lift_increase = (control_rate * minimum_detectable_effect*100)+control_rate*100
+
+    st.markdown(f"""
+    <div style="background-color: rgba(99, 102, 241, 0.1); border-left: 4px solid #6366f1; padding: 1.2rem; border-radius: 4px; margin-top: 10px; margin-bottom: 20px;">
+        <h4 style="margin: 0 0 10px 0; color: #818cf8; font-size: 1rem;">🎯 Best Estimator: {best_method}</h4>
+        <p style="margin: 0; font-size: 0.9rem; color: #e4e7eb; line-height: 1.5;">
+            <b>Insight</b>: After removing selection bias, the best method, <b>{best_method}</b> identifies a true lift of <b>{best_ate:+.2f}</b> with an estimated <b>{best_error*100:.2f}%</b> error. 
+            This means that the treatment increases purchase probability by {best_ate*100:+.2f}% which exceeds our primary goal of {target_lift_increase-(control_rate*100)}%
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Uplift section
     st.markdown("<br>", unsafe_allow_html=True)
