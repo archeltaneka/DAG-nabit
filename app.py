@@ -36,257 +36,327 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS - Dark Theme
+# Custom CSS - Dark Theme (see brand_guideline.md)
 st.markdown("""
     <style>
-    /* Main container styling */
+    /* =================================================================
+       Design Tokens (from brand_guideline.md)
+       ================================================================= */
+    :root {
+        /* Background Colors */
+        --bg-primary: #0f1419;
+        --bg-surface: #1a1f2e;
+        --bg-border: #2d3748;
+
+        /* Brand Accent */
+        --accent-indigo: #667eea;
+        --accent-purple: #764ba2;
+        --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        /* Segment Colors */
+        --seg-loyalists: #38bdf8;
+        --seg-persuadables: #22c55e;
+        --seg-sleeping: #ec4899;
+        --seg-lost: #fbbf24;
+
+        /* Text Colors */
+        --text-primary: #e4e7eb;
+        --text-secondary: #94a3b8;
+        --text-muted: #718096;
+
+        /* Utility Colors */
+        --badge-purple: #a78bfa;
+        --error-red: #ef4444;
+
+        /* Typography */
+        --font-size-title: 1.5rem;
+        --font-size-h3: 1.25rem;
+        --font-size-chart-title: 1.125rem;
+        --font-size-body: 0.875rem;
+        --font-size-label: 0.75rem;
+        --font-size-metric: 1.5rem;
+        --font-size-metric-sm: 1.3rem;
+
+        /* Spacing */
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --radius-pill: 9999px;
+        --spacing-sm: 0.5rem;
+        --spacing-md: 1rem;
+        --spacing-lg: 1.5rem;
+        --spacing-xl: 2rem;
+    }
+
+    /* =================================================================
+       Layout: Main & Sidebar
+       ================================================================= */
     .main {
-        background-color: #0f1419;
-        color: #e4e7eb;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
     }
-    
-    /* Sidebar styling */
+
     [data-testid="stSidebar"] {
-        background-color: #1a1f2e;
-        border-right: 1px solid #2d3748;
+        background-color: var(--bg-surface);
+        border-right: 1px solid var(--bg-border);
     }
-    
+
     [data-testid="stSidebar"] * {
-        color: #e4e7eb !important;
+        color: var(--text-primary) !important;
     }
-    
-    /* Header styling */
+
+    /* =================================================================
+       App Header
+       ================================================================= */
     .app-header {
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        margin-bottom: 2rem;
+        margin-bottom: var(--spacing-xl);
     }
-    
+
     .app-logo {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--accent-gradient);
         color: white;
         width: 40px;
         height: 40px;
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: bold;
-        font-size: 1.25rem;
+        font-size: var(--font-size-h3);
     }
-    
+
     .app-title {
-        font-size: 1.5rem;
+        font-size: var(--font-size-title);
         font-weight: 600;
-        color: #e4e7eb;
+        color: var(--text-primary);
     }
-    
+
     .app-version {
-        font-size: 0.875rem;
-        color: #718096;
-        margin-left: 0.5rem;
+        font-size: var(--font-size-body);
+        color: var(--text-muted);
+        margin-left: var(--spacing-sm);
     }
-    
-    /* Segment card styling */
+
+    /* =================================================================
+       Segment Cards
+       ================================================================= */
     .segment-card {
         background: linear-gradient(135deg, var(--card-color) 0%, var(--card-color-dark) 100%);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-md);
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
-    
+
     .segment-card-loyalists {
         --card-color: rgba(56, 189, 248, 0.15);
         --card-color-dark: rgba(14, 165, 233, 0.15);
     }
-    
+
     .segment-card-persuadables {
         --card-color: rgba(34, 197, 94, 0.15);
         --card-color-dark: rgba(22, 163, 74, 0.15);
     }
-    
+
     .segment-card-sleeping {
         --card-color: rgba(236, 72, 153, 0.15);
         --card-color-dark: rgba(219, 39, 119, 0.15);
     }
-    
+
     .segment-card-lost {
         --card-color: rgba(251, 191, 36, 0.15);
         --card-color-dark: rgba(245, 158, 11, 0.15);
     }
-    
+
     .segment-header {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: var(--spacing-sm);
         margin-bottom: 1.25rem;
     }
-    
+
     .segment-dot {
         width: 12px;
         height: 12px;
         border-radius: 50%;
         display: inline-block;
     }
-    
+
     .segment-title {
-        font-size: 1.25rem;
+        font-size: var(--font-size-h3);
         font-weight: 600;
-        color: #e4e7eb;
+        color: var(--text-primary);
         margin: 0;
     }
-    
+
+    /* =================================================================
+       Metrics
+       ================================================================= */
     .segment-metric {
-        margin-bottom: 1rem;
+        margin-bottom: var(--spacing-md);
     }
-    
+
     .metric-label {
-        font-size: 0.75rem;
+        font-size: var(--font-size-label);
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: #94a3b8;
+        color: var(--text-secondary);
         margin-bottom: 0.25rem;
     }
-    
+
     .metric-value {
-        font-size: 1.5rem;
+        font-size: var(--font-size-metric);
         font-weight: 700;
-        color: #e4e7eb;
+        color: var(--text-primary);
     }
-    
+
     .metric-subtext {
-        font-size: 0.875rem;
-        color: #94a3b8;
-        margin-left: 0.5rem;
+        font-size: var(--font-size-body);
+        color: var(--text-secondary);
+        margin-left: var(--spacing-sm);
     }
-    
+
     .metric-bar {
         width: 100%;
         height: 8px;
         background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
         overflow: hidden;
-        margin-top: 0.5rem;
+        margin-top: var(--spacing-sm);
     }
-    
+
     .metric-bar-fill {
         height: 100%;
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
         transition: width 0.3s ease;
     }
-    
-    /* Chart container */
+
+    div[data-testid="stMetricValue"] {
+        color: var(--text-primary);
+    }
+
+    /* =================================================================
+       Chart Containers
+       ================================================================= */
     .chart-container {
-        background-color: #1a1f2e;
-        border-radius: 12px;
-        padding: 1.5rem;
-        border: 1px solid #2d3748;
-        margin-bottom: 1.5rem;
+        background-color: var(--bg-surface);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        border: 1px solid var(--bg-border);
+        margin-bottom: var(--spacing-lg);
     }
-    
+
     .chart-title {
-        font-size: 1.125rem;
+        font-size: var(--font-size-chart-title);
         font-weight: 600;
-        color: #e4e7eb;
-        margin-bottom: 1rem;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-md);
     }
-    
+
     .chart-subtitle {
-        font-size: 0.875rem;
-        color: #94a3b8;
-        margin-bottom: 1rem;
+        font-size: var(--font-size-body);
+        color: var(--text-secondary);
+        margin-bottom: var(--spacing-md);
     }
-    
-    /* Badge styling */
+
+    /* =================================================================
+       Badges
+       ================================================================= */
     .badge {
         display: inline-block;
         padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
+        border-radius: var(--radius-pill);
+        font-size: var(--font-size-label);
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-    
+
     .badge-ground-truth {
         background-color: rgba(139, 92, 246, 0.2);
-        color: #a78bfa;
+        color: var(--badge-purple);
         border: 1px solid rgba(139, 92, 246, 0.3);
     }
-    
-    /* Tab styling */
+
+    /* =================================================================
+       Tabs
+       ================================================================= */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
+        gap: var(--spacing-xl);
         background-color: transparent;
-        border-bottom: 1px solid #2d3748;
+        border-bottom: 1px solid var(--bg-border);
     }
-    
+
     .stTabs [data-baseweb="tab"] {
         background-color: transparent;
-        color: #94a3b8;
+        color: var(--text-secondary);
         border: none;
         padding: 0.75rem 0;
         font-weight: 500;
     }
-    
+
     .stTabs [aria-selected="true"] {
-        color: #667eea;
-        border-bottom: 2px solid #667eea;
+        color: var(--accent-indigo);
+        border-bottom: 2px solid var(--accent-indigo);
     }
-    
-    /* Metric cards */
-    div[data-testid="stMetricValue"] {
-        color: #e4e7eb;
-    }
-    
-    /* Info boxes */
+
+    /* =================================================================
+       Alerts / Info Boxes
+       ================================================================= */
     .stAlert {
         background-color: rgba(59, 130, 246, 0.1);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        color: #e4e7eb;
+        color: var(--text-primary);
     }
-    
-    /* Buttons */
+
+    /* =================================================================
+       Buttons
+       ================================================================= */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--accent-gradient);
         color: white;
         border: none;
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         padding: 0.75rem 2rem;
         font-weight: 600;
         transition: transform 0.2s;
     }
-    
+
     .stButton > button:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     }
-    
-    /* Sidebar header */
+
+    /* =================================================================
+       Sidebar Components
+       ================================================================= */
     .sidebar-header {
         text-align: center;
-        padding: 1rem 0 2rem 0;
-        border-bottom: 1px solid #2d3748;
-        margin-bottom: 2rem;
+        padding: var(--spacing-md) 0 var(--spacing-xl) 0;
+        border-bottom: 1px solid var(--bg-border);
+        margin-bottom: var(--spacing-xl);
     }
-    
+
     .sidebar-section {
-        margin-bottom: 2rem;
+        margin-bottom: var(--spacing-xl);
     }
-    
+
     .sidebar-section-title {
-        font-size: 0.75rem;
+        font-size: var(--font-size-label);
         text-transform: uppercase;
         letter-spacing: 0.1em;
-        color: #718096;
-        margin-bottom: 1rem;
+        color: var(--text-muted);
+        margin-bottom: var(--spacing-md);
         font-weight: 600;
     }
-    
-    /* Hide Streamlit branding */
+
+    /* =================================================================
+       Streamlit Chrome (hidden)
+       ================================================================= */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -457,15 +527,14 @@ with st.sidebar:
     # Sidebar header
     st.markdown("""
         <div class="sidebar-header">
-            <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem;">DAG-nabit</div>
-            <div style="color: #718096; font-size: 0.875rem;">v1.0</div>
+            <div class="app-title">DAG-nabit</div>
+            <div class="app-version">v1.0</div>
         </div>
     """, unsafe_allow_html=True)
-    
-    # Configuration section
-    st.markdown('<div class="sidebar-section-title">CONFIGURATION</div>', unsafe_allow_html=True)
-    st.markdown("**Population Params**")
-    
+
+    # --- Population Configuration ---
+    st.markdown('<div class="sidebar-section-title">POPULATION</div>', unsafe_allow_html=True)
+
     n_customers = st.slider(
         "Total Population (N)", 
         min_value=1000, 
@@ -483,7 +552,7 @@ with st.sidebar:
         step=0.01,
         help="Discount amount to apply to customers"
     )
-    
+
     random_seed = st.number_input(
         "Simulation Seed",
         value=42,
@@ -491,10 +560,11 @@ with st.sidebar:
         key="random_seed",
         help="Fixed seed ensures reproducibility of the synthetic dataset"
     )
-    
-    st.markdown("---")
 
-    st.markdown("**A/B Test Params**")
+    st.divider()
+
+    # --- A/B Test Configuration ---
+    st.markdown('<div class="sidebar-section-title">A/B TEST</div>', unsafe_allow_html=True)
 
     control_rate = st.slider(
         "Control Group Conversion Rate",
@@ -541,9 +611,11 @@ with st.sidebar:
         help="If the value is 0.5, 50% of the customers will get the treatment"
     )
 
-    st.markdown("---")
+    st.divider()
 
-    st.markdown("**Multi-Arm Bandit Params**")
+    # --- Multi-Arm Experiment Configuration ---
+    st.markdown('<div class="sidebar-section-title">MULTI-ARM EXPERIMENT</div>', unsafe_allow_html=True)
+
     n_per_arm = st.slider(
         "Number of Customers per Arm",
         min_value=100,
@@ -553,33 +625,30 @@ with st.sidebar:
         help="Number of customers to simulate per arm"
     )
 
-    available_discounts = {
-        'control': 0.0,
-        'discount_10': 0.10,
-        'discount_20': 0.20,
-        'discount_30': 0.30
-    }
-    selected_arms = st.sidebar.multiselect(
+    selected_arms = st.multiselect(
         "Select Arms to Compare",
         options=list(st.session_state.custom_discounts.keys()),
         default=list(st.session_state.custom_discounts.keys())
     )
 
-    with st.sidebar.expander("Add Custom Arm"):
+    with st.expander("Add Custom Arm"):
         new_label = st.text_input("Arm Name", placeholder="e.g., Flash Sale")
         new_val = st.number_input("Discount Value", min_value=0.0, max_value=1.0, value=0.15, step=0.01)
-        
+
         if st.button("Add to Experiment"):
             if new_label and new_label not in st.session_state.custom_discounts:
                 st.session_state.custom_discounts[new_label] = new_val
-            st.success(f"Added {new_label}!")
-            st.rerun() # Refresh to update the multiselect options
+                st.success(f"Added {new_label}!")
+                st.rerun()
+            elif not new_label:
+                st.warning("Please enter an arm name.")
+            else:
+                st.warning(f"'{new_label}' already exists.")
 
-    st.markdown("---")
-    
-    # Toggles
+    st.divider()
+
+    # --- Toggles ---
     include_noise = st.toggle("Include Noise", value=True, help="Add random noise to activity scores")
-    
 
 # Get simulation parameters
 random_seed = st.session_state.get("random_seed", 42)
@@ -614,121 +683,127 @@ tab_simulation, tab_experiment, tab_inference = st.tabs([
 ])
 
 # -----------------------------------------------------------------------------
+# Shared Constants
+# -----------------------------------------------------------------------------
+
+SEGMENT_COLORS = {
+    'Loyalists': '#38bdf8',
+    'Persuadables': '#22c55e',
+    'Sleeping Dogs': '#ec4899',
+    'Lost Causes': '#fbbf24'
+}
+
+def dark_chart_layout(height=350, **overrides):
+    """Reusable Plotly layout for the dark dashboard theme."""
+    layout = dict(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(family="Inter, sans-serif", color='#94a3b8'),
+        showlegend=False,
+        height=height,
+        margin=dict(t=40, b=40, l=30, r=20),
+        xaxis=dict(showgrid=False, zeroline=False, tickfont=dict(size=11)),
+        yaxis=dict(showgrid=True, gridcolor='#2d3748', zeroline=False, tickfont=dict(size=11)),
+    )
+    layout.update(overrides)
+    return layout
+
+# -----------------------------------------------------------------------------
 # Tab 1: Ground Truth
 # -----------------------------------------------------------------------------
 
 with tab_simulation:
-    # Tab description
-    st.markdown(f"""
-    <div style="background-color: rgba(26, 31, 46, 0.6); border: 1px solid #2d3748; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
-        <h3 style="color: #e4e7eb; margin-top: 0;">Business Strategy Simulation</h3>
-        <p style="color: #94a3b8; font-size: 1rem;">
+    # --- Intro panel ---
+    st.markdown("""
+    <div class="chart-container">
+        <div class="chart-title">Business Strategy Simulation</div>
+        <p style="color: var(--text-secondary); font-size: 1rem;">
             Our simulation models <b>4 distinct customer types</b> (inspired by real uplift modeling research):
         </p>
-        <div style="margin: 1.5rem 0;">
-            <table style="width: 100%; border-collapse: collapse; color: #e4e7eb; font-size: 0.9rem;">
-                <tr style="border-bottom: 1px solid #2d3748; text-align: left; color: #718096;">
-                    <th style="padding: 10px;">Segment</th>
-                    <th style="padding: 10px;">Base Purchase Rate</th>
-                    <th style="padding: 10px;">Discount Sensitivity</th>
-                    <th style="padding: 10px;">Key Insight</th>
-                </tr>
-                <tr style="border-bottom: 1px solid #2d3748;">
-                    <td style="padding: 10px;"><b style="color: #38bdf8;">Loyalists</b></td>
-                    <td style="padding: 10px;">80%</td>
-                    <td style="padding: 10px;">+5%</td>
-                    <td style="padding: 10px; color: #94a3b8;">Buy anyway - discount wastes money</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #2d3748;">
-                    <td style="padding: 10px;"><b style="color: #22c55e;">Persuadables</b></td>
-                    <td style="padding: 10px;">30%</td>
-                    <td style="padding: 10px; color: #22c55e;"><b>+40%</b></td>
-                    <td style="padding: 10px;"><b>TARGET THESE!</b> High ROI</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #2d3748;">
-                    <td style="padding: 10px;"><b style="color: #ec4899;">Sleeping Dogs</b></td>
-                    <td style="padding: 10px;">15%</td>
-                    <td style="padding: 10px; color: #ef4444;">-10%</td>
-                    <td style="padding: 10px; color: #94a3b8;">Discounts HURT conversion</td>
-                </tr>
-                <tr>
-                    <td style="padding: 10px;"><b style="color: #fbbf24;">Lost Causes</b></td>
-                    <td style="padding: 10px;">5%</td>
-                    <td style="padding: 10px;">+2%</td>
-                    <td style="padding: 10px; color: #94a3b8;">Won't buy even with discount</td>
-                </tr>
-            </table>
-        </div>
-        <p style="color: #94a3b8; font-size: 0.95rem;">
-            <b style="color: #e4e7eb;">The Challenge:</b> In real business, we can't observe segments directly. We only see observable features (age, activity) and outcomes (did they buy?).
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-primary); font-size: 0.9rem; margin: 1rem 0;">
+            <tr style="border-bottom: 1px solid var(--bg-border); text-align: left; color: var(--text-muted);">
+                <th style="padding: 10px;">Segment</th>
+                <th style="padding: 10px;">Base Purchase Rate</th>
+                <th style="padding: 10px;">Discount Sensitivity</th>
+                <th style="padding: 10px;">Key Insight</th>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--bg-border);">
+                <td style="padding: 10px;"><b style="color: var(--seg-loyalists);">Loyalists</b></td>
+                <td style="padding: 10px;">80%</td>
+                <td style="padding: 10px;">+5%</td>
+                <td style="padding: 10px; color: var(--text-secondary);">Buy anyway — discount wastes money</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--bg-border);">
+                <td style="padding: 10px;"><b style="color: var(--seg-persuadables);">Persuadables</b></td>
+                <td style="padding: 10px;">30%</td>
+                <td style="padding: 10px; color: var(--seg-persuadables);"><b>+40%</b></td>
+                <td style="padding: 10px;"><b>TARGET THESE!</b> High ROI</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--bg-border);">
+                <td style="padding: 10px;"><b style="color: var(--seg-sleeping);">Sleeping Dogs</b></td>
+                <td style="padding: 10px;">15%</td>
+                <td style="padding: 10px; color: var(--error-red);">-10%</td>
+                <td style="padding: 10px; color: var(--text-secondary);">Discounts HURT conversion</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px;"><b style="color: var(--seg-lost);">Lost Causes</b></td>
+                <td style="padding: 10px;">5%</td>
+                <td style="padding: 10px;">+2%</td>
+                <td style="padding: 10px; color: var(--text-secondary);">Won't buy even with discount</td>
+            </tr>
+        </table>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">
+            <b style="color: var(--text-primary);">The Challenge:</b> In real business, we can't observe segments directly. We only see observable features (age, activity) and outcomes (did they buy?).
         </p>
-        <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 0;">
-            <b style="color: #e4e7eb;">Goal:</b> Use causal inference to identify <b>Persuadables</b> without wasting money on others.
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 0;">
+            <b style="color: var(--text-primary);">Goal:</b> Use causal inference to identify <b>Persuadables</b> without wasting money on others.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Calculate segment statistics
-    segment_stats = customers.groupby('segment').agg({
-        'base_purchase_propensity': 'mean',
-        'discount_effect': 'mean',
-        'churn_propensity': 'mean',
-        'activity_score': 'mean'
-    }).reset_index()
-    
-    # Create 4 columns for segment cards
-    cols = st.columns(4)
-    
+    # --- Segment cards ---
     segments_config = [
         {
             'name': 'Loyalists',
             'color': 'loyalists',
-            'dot_color': '#38bdf8',
+            'dot_color': SEGMENT_COLORS['Loyalists'],
             'purchase_label': 'High',
             'purchase_range': '~90%',
             'sensitivity': 'Zero / Neg',
-            'sensitivity_color': '#94a3b8',
             'sensitivity_width': '10%'
         },
         {
             'name': 'Persuadables',
             'color': 'persuadables',
-            'dot_color': '#22c55e',
+            'dot_color': SEGMENT_COLORS['Persuadables'],
             'purchase_label': 'Low',
             'purchase_range': '~15%',
             'sensitivity': 'High +',
-            'sensitivity_color': '#22c55e',
             'sensitivity_width': '85%'
         },
         {
             'name': 'Sleeping Dogs',
             'color': 'sleeping',
-            'dot_color': '#ec4899',
+            'dot_color': SEGMENT_COLORS['Sleeping Dogs'],
             'purchase_label': 'Variable',
             'purchase_range': '~40%',
             'sensitivity': 'Negative -',
-            'sensitivity_color': '#ec4899',
             'sensitivity_width': '45%'
         },
         {
             'name': 'Lost Causes',
             'color': 'lost',
-            'dot_color': '#fbbf24',
+            'dot_color': SEGMENT_COLORS['Lost Causes'],
             'purchase_label': 'Near 0',
             'purchase_range': '~1%',
             'sensitivity': 'None',
-            'sensitivity_color': '#94a3b8',
             'sensitivity_width': '5%'
         }
     ]
-    
-    # Create 4 columns for segment cards
-    cols = st.columns(4)
 
+    cols = st.columns(4)
     for col, config in zip(cols, segments_config):
         with col:
-            # 1. We define the HTML with zero leading indentation 
-            # 2. We apply config['dot_color'] to the primary metrics
             card_html = f"""
     <div class="segment-card segment-card-{config['color']}">
         <div class="segment-header">
@@ -737,14 +812,14 @@ with tab_simulation:
         </div>
         <div class="segment-metric">
             <div class="metric-label">BASE PURCHASE RATE</div>
-            <div class="metric-value" style="color: {config['dot_color']}; font-weight: 800; font-size: 1.6rem;">
+            <div class="metric-value" style="color: {config['dot_color']};">
                 {config['purchase_label']}
-                <span class="metric-subtext" style="color: #94a3b8; font-weight: 400; font-size: 0.8rem;">({config['purchase_range']})</span>
+                <span class="metric-subtext">({config['purchase_range']})</span>
             </div>
         </div>
         <div class="segment-metric">
             <div class="metric-label">DISCOUNT SENSITIVITY</div>
-            <div class="metric-value" style="color: {config['dot_color']}; font-weight: 800; font-size: 1.3rem; margin-bottom: 4px;">
+            <div class="metric-value" style="color: {config['dot_color']}; font-size: var(--font-size-metric-sm);">
                 {config['sensitivity']}
             </div>
             <div class="metric-bar">
@@ -752,43 +827,32 @@ with tab_simulation:
             </div>
         </div>
     </div>"""
-            
-            # Ensure there are no spaces before card_html
             st.markdown(card_html, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- Feature Distributions Section ---
+    # --- Feature Distributions ---
     st.markdown("""
         <div class="chart-container">
             <div class="chart-title">Customer Feature Distributions</div>
-            <div class="chart-subtitle">Analyzing how segments differ across observable characteristics</div>
+            <div class="chart-subtitle">
+                Each histogram overlays the 4 segments so you can see where they overlap and diverge.
+                Features with <b>high separation</b> (e.g., Activity Score) are strong predictors of segment membership,
+                while <b>overlapping</b> features (e.g., Age) make causal inference more challenging.
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
-    # Define the features to plot
     features = [
-        ('age', 'Age (Years)'), 
-        ('tenure_months', 'Tenure (Months)'), 
-        ('activity_score', 'Activity Score (0-100)'), 
-        ('prev_purchases', 'Previous Purchases'), 
-        ('account_value', 'Total Account Value ($)'), 
+        ('age', 'Age (Years)'),
+        ('tenure_months', 'Tenure (Months)'),
+        ('activity_score', 'Activity Score (0-100)'),
+        ('prev_purchases', 'Previous Purchases'),
+        ('account_value', 'Total Account Value ($)'),
         ('email_engagement_rate', 'Email Engagement (%)')
     ]
 
-    # Synchronized color palette
-    colors_map = {
-        'Loyalists': '#38bdf8',
-        'Persuadables': '#22c55e',
-        'Sleeping Dogs': '#ec4899',
-        'Lost Causes': '#fbbf24'
-    }
-
-    # Normalize segment names for consistent color mapping
     plot_df = customers.copy()
     plot_df['segment_display'] = plot_df['segment'].str.title().str.replace('_', ' ')
 
-    # Create a 3x2 grid of columns
     for i in range(0, len(features), 2):
         row_cols = st.columns(2)
         for j in range(2):
@@ -801,181 +865,112 @@ with tab_simulation:
                         color="segment_display",
                         nbins=50,
                         barmode="overlay",
-                        color_discrete_map=colors_map,
+                        color_discrete_map=SEGMENT_COLORS,
                         opacity=0.6,
                         labels={"segment_display": "Segment"}
                     )
-                    
-                    fig_hist.update_layout(
-                        title=dict(
-                            text=label,
-                            font=dict(size=14, color='#e4e7eb'),
-                            x=0.05,
-                            y=0.95
-                        ),
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        paper_bgcolor='rgba(15, 20, 25, 0.4)', # Slightly lighter than main bg
-                        font=dict(family="Inter, sans-serif", color='#94a3b8'),
+                    fig_hist.update_layout(**dark_chart_layout(
                         height=280,
                         margin=dict(t=50, b=30, l=30, r=20),
-                        showlegend=False, # Hide individual legends to save space
-                        xaxis=dict(
-                            showgrid=False,
-                            zeroline=False,
-                            title="",
-                            tickfont=dict(size=10)
-                        ),
-                        yaxis=dict(
-                            showgrid=True,
-                            gridcolor='#2d3748',
-                            zeroline=False,
-                            title="",
-                            showticklabels=False
-                        )
-                    )
-                    
-                    # Smooth out the bins and remove the outline
+                        title=dict(text=label, font=dict(size=14, color='#e4e7eb'), x=0.05, y=0.95),
+                        yaxis=dict(showgrid=True, gridcolor='#2d3748', zeroline=False, title="", showticklabels=False),
+                        xaxis=dict(showgrid=False, zeroline=False, title="", tickfont=dict(size=10)),
+                    ))
                     fig_hist.update_traces(marker_line_width=0)
                     st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
 
-    # Add a single shared legend at the bottom for the whole grid
-    legend_html = f"""
-    <div style="display: flex; justify-content: center; gap: 20px; margin-top: 10px; padding: 10px; background: #1a1f2e; border-radius: 8px; border: 1px solid #2d3748;">
-        {''.join([f'<div style="display: flex; align-items: center; gap: 8px;"><div style="width: 12px; height: 12px; border-radius: 3px; background-color: {c};"></div><span style="color: #e4e7eb; font-size: 0.85rem; font-family: Inter;">{s}</span></div>' for s, c in colors_map.items()])}
+    # Shared legend
+    legend_items = ''.join([
+        f'<div style="display: flex; align-items: center; gap: 8px;">'
+        f'<div style="width: 12px; height: 12px; border-radius: 3px; background-color: {c};"></div>'
+        f'<span style="color: var(--text-primary); font-size: var(--font-size-body);">{s}</span>'
+        f'</div>'
+        for s, c in SEGMENT_COLORS.items()
+    ])
+    st.markdown(f"""
+    <div style="display: flex; justify-content: center; gap: 20px; padding: 10px;
+                background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--bg-border);">
+        {legend_items}
     </div>
-    """
-    st.markdown(legend_html, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-    # Charts section
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.markdown("""
-            <div class="chart-container">
-                <div class="chart-title">Hidden Customer Segments</div>
-                <div class="chart-subtitle">Distribution count of true customer types in generated population</div>
+    # --- Segment Distribution & Discount Effects ---
+    st.markdown("""
+        <div class="chart-container" style="margin-top: var(--spacing-lg);">
+            <div class="chart-title">Segment Composition & True Causal Effects</div>
+            <div class="chart-subtitle">
+                Left: How many customers fall into each segment (ground truth, not observable in practice).
+                Right: The <b>true individual treatment effect (ITE)</b> of a discount for each segment — 
+                this is the "answer key" that causal inference methods try to recover.
             </div>
-        """, unsafe_allow_html=True)
-        
-        # Segment distribution chart
+        </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
         segment_counts = customers['segment'].value_counts()
-        # Normalize index to Title Case to match colors dict keys (e.g. 'loyalists' -> 'Loyalists')
         segment_counts.index = segment_counts.index.str.title().str.replace('_', ' ')
-        
-        colors = {
-            'Loyalists': '#38bdf8',
-            'Persuadables': '#22c55e',
-            'Sleeping Dogs': '#ec4899',
-            'Lost Causes': '#fbbf24'
-        }
-        
+
         fig_seg = go.Figure(data=[
             go.Bar(
                 x=segment_counts.index,
                 y=segment_counts.values,
-                marker_color=[colors.get(seg, '#94a3b8') for seg in segment_counts.index],
+                marker_color=[SEGMENT_COLORS.get(seg, '#94a3b8') for seg in segment_counts.index],
                 text=segment_counts.values,
                 textposition='outside'
             )
         ])
-        
-        fig_seg.update_layout(
-            plot_bgcolor='#0f1419',
-            paper_bgcolor='#0f1419',
-            font_color='#e4e7eb',
-            showlegend=False,
+        fig_seg.update_layout(**dark_chart_layout(
             height=400,
             margin=dict(t=20, b=20, l=20, r=20),
-            xaxis=dict(
-                showgrid=False,
-                zeroline=False,
-            ),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='#2d3748',
-                zeroline=False,
-            )
-        )
-        
-        st.plotly_chart(fig_seg, use_container_width=True)
-    
+            font_color='#e4e7eb',
+        ))
+        st.plotly_chart(fig_seg, use_container_width=True, config={'displayModeBar': False})
+
     with col2:
-        st.markdown("""
-            <div class="chart-container">
-                <div class="chart-title">Distribution of TRUE Discount Effects by Segment</div>
-                <div class="chart-subtitle">Causal Effect: P(Purchase | Treat) - P(Purchase | Control)</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # 1. Ensure colors match the segment names in the dataframe exactly
-        # Your bar chart uses 'Loyalists', but your raw data likely uses 'Loyalists' 
-        # (Check if your generator uses lowercase; if so, adjust this dict)
-        box_colors = {
-            'Loyalists': '#38bdf8',
-            'Persuadables': '#22c55e',
-            'Sleeping Dogs': '#ec4899',
-            'Lost Causes': '#fbbf24'
-        }
-        
         fig_box = go.Figure()
-        
-        # 2. Loop through the segments present in the actual data
-        # We use .unique() to ensure we only plot what exists
-        for segment in box_colors.keys():
-            # Ensure we filter correctly (handling potential Title Case issues)
-            segment_data = customers[customers['segment'].str.title().str.replace('_', ' ') == segment]['discount_effect']
-            
+        for segment, color in SEGMENT_COLORS.items():
+            segment_data = customers[
+                customers['segment'].str.title().str.replace('_', ' ') == segment
+            ]['discount_effect']
+
             if not segment_data.empty:
                 fig_box.add_trace(go.Box(
                     y=segment_data,
                     name=segment,
-                    marker_color=box_colors[segment],
+                    marker_color=color,
                     boxmean=True,
-                    fillcolor=box_colors[segment],
+                    fillcolor=color,
                     opacity=0.6,
                     line=dict(width=1.5),
-                    marker=dict(size=2, opacity=0.3) # Subtle outliers
+                    marker=dict(size=2, opacity=0.3)
                 ))
-        
-        # 3. Apply the "Clean Dashboard" layout
-        fig_box.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Inter, sans-serif", color='#94a3b8'),
-            showlegend=False,
-            height=350,
+
+        fig_box.update_layout(**dark_chart_layout(
+            height=400,
             margin=dict(t=40, b=40, l=0, r=0),
-            xaxis=dict(
-                showgrid=False,
-                zeroline=False,
-                tickfont=dict(size=11)
-            ),
             yaxis=dict(
-                showgrid=True,
-                gridcolor='#2d3748',
-                zeroline=True,
-                zerolinecolor='#4a5568',
+                showgrid=True, gridcolor='#2d3748',
+                zeroline=True, zerolinecolor='#4a5568',
                 tickfont=dict(size=11),
                 title=dict(text="Effect Size", font=dict(size=10))
-            )
-        )
-        
+            ),
+        ))
         st.plotly_chart(fig_box, use_container_width=True, config={'displayModeBar': False})
-    
+
+    # Key Insight callout
     st.markdown("""
-        <div style="background-color: rgba(236, 72, 153, 0.1); 
-                    border-left: 4px solid #ec4899; 
-                    padding: 1rem; 
-                    border-radius: 4px; 
-                    margin-top: 10px;">
-            <p style="margin: 0; font-size: 0.9rem; color: #e4e7eb; line-height: 1.4;">
-                <span style="font-size: 1.2rem; margin-right: 5px;">💡</span> 
-                <b>Key Insight:</b> <span style="color: #ec4899; font-weight: 700;">'Sleeping Dogs'</span> 
-                have <b>NEGATIVE lift</b> — discounts hurt conversion! 
-                <br/>This is realistic: some 
-                customers see discounts as 'cheap' or spammy.
+        <div style="background-color: rgba(236, 72, 153, 0.1);
+                    border-left: 4px solid var(--seg-sleeping);
+                    padding: var(--spacing-md);
+                    border-radius: var(--radius-sm);
+                    margin-top: var(--spacing-sm);">
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary); line-height: 1.4;">
+                <span style="font-size: 1.2rem; margin-right: 5px;">💡</span>
+                <b>Key Insight:</b> <span style="color: var(--seg-sleeping); font-weight: 700;">'Sleeping Dogs'</span>
+                have <b>NEGATIVE lift</b> — discounts hurt conversion!
+                <br/>This is realistic: some customers see discounts as 'cheap' or spammy.
             </p>
         </div>
     """, unsafe_allow_html=True)
