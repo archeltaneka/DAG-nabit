@@ -283,6 +283,88 @@ st.markdown("""
     }
 
     /* =================================================================
+       Section Headers (intro panels with left border)
+       ================================================================= */
+    .section-header {
+        background-color: rgba(102, 126, 234, 0.05);
+        border-left: 4px solid var(--accent-indigo);
+        padding: var(--spacing-lg);
+        border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .section-header h3 {
+        color: var(--text-primary);
+        margin-top: 0;
+    }
+
+    .section-header p {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        margin-bottom: 0;
+    }
+
+    /* =================================================================
+       Callout Boxes
+       ================================================================= */
+    .callout {
+        padding: var(--spacing-md);
+        border-radius: var(--radius-sm);
+        margin-top: var(--spacing-sm);
+    }
+
+    .callout p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        line-height: 1.4;
+    }
+
+    .callout-pink {
+        background-color: rgba(236, 72, 153, 0.1);
+        border-left: 4px solid var(--seg-sleeping);
+    }
+
+    .callout-amber {
+        background-color: rgba(251, 191, 36, 0.1);
+        border-left: 4px solid var(--seg-lost);
+    }
+
+    .callout-red {
+        background-color: rgba(244, 63, 94, 0.1);
+        border: 1px solid rgba(244, 63, 94, 0.2);
+        border-radius: var(--radius-md);
+    }
+
+    .callout-indigo {
+        background-color: rgba(99, 102, 241, 0.1);
+        border-left: 4px solid #6366f1;
+    }
+
+    /* =================================================================
+       Stat Card (3-column layout in A/B Test tab)
+       ================================================================= */
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: var(--font-size-label);
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .stat-line {
+        color: var(--text-primary);
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .stat-footnote {
+        color: var(--text-muted);
+        font-size: var(--font-size-label);
+        font-style: italic;
+    }
+
+    /* =================================================================
        Tabs
        ================================================================= */
     .stTabs [data-baseweb="tab-list"] {
@@ -961,12 +1043,8 @@ with tab_simulation:
 
     # Key Insight callout
     st.markdown("""
-        <div style="background-color: rgba(236, 72, 153, 0.1);
-                    border-left: 4px solid var(--seg-sleeping);
-                    padding: var(--spacing-md);
-                    border-radius: var(--radius-sm);
-                    margin-top: var(--spacing-sm);">
-            <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary); line-height: 1.4;">
+        <div class="callout callout-pink">
+            <p>
                 <span style="font-size: 1.2rem; margin-right: 5px;">💡</span>
                 <b>Key Insight:</b> <span style="color: var(--seg-sleeping); font-weight: 700;">'Sleeping Dogs'</span>
                 have <b>NEGATIVE lift</b> — discounts hurt conversion!
@@ -980,11 +1058,14 @@ with tab_simulation:
 # -----------------------------------------------------------------------------
 
 with tab_experiment:
+    # --- Section 1: Test Planning ---
     st.markdown("""
-        <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
-            <h3 style="color: #e4e7eb; margin-top: 0;">✅ Test Planning</h3>
-            <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
-                <b>Question</b>: "How many customers do I need to detect an x% lift?"<br/>
+        <div class="section-header">
+            <h3>✅ Test Planning</h3>
+            <p>
+                <b>Question</b>: "How many customers do I need to detect an x% lift?"
+                Power analysis helps us avoid running an experiment that's too small to detect a real effect
+                (underpowered) or too large (wasting resources).
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -993,31 +1074,33 @@ with tab_experiment:
 
     with col_biz:
         st.markdown(f"""
-            <p style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Business Context</p>
-            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Base Conv. Rate: <b style="color: #38bdf8;">{control_rate * 100}%</b></p>
-            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Min. Meaningful Lift: <b style="color: #22c55e;">{minimum_detectable_effect * 100}%</b></p>
-            <p style="color: #64748b; font-size: 0.8rem; font-style: italic;">(Targeting {control_rate * 100}% → {(control_rate * minimum_detectable_effect*100)+control_rate*100}%)</p>
+            <p class="stat-label">Business Context</p>
+            <p class="stat-line">Base Conv. Rate: <b style="color: var(--seg-loyalists);">{control_rate * 100}%</b></p>
+            <p class="stat-line">Min. Meaningful Lift: <b style="color: var(--seg-persuadables);">{minimum_detectable_effect * 100}%</b></p>
+            <p class="stat-footnote">(Targeting {control_rate * 100}% → {(control_rate * minimum_detectable_effect*100)+control_rate*100}%)</p>
         """, unsafe_allow_html=True)
 
     with col_stat:
         st.markdown(f"""
-            <p style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Statistical Requirements</p>
-            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Significance (α): <b style="color: #fbbf24;">{alpha}</b></p>
-            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Power (1-β): <b style="color: #fbbf24;">{beta}</b></p>
-            <p style="color: #64748b; font-size: 0.8rem; font-style: italic;">(Standard Rigor)</p>
+            <p class="stat-label">Statistical Requirements</p>
+            <p class="stat-line">Significance (α): <b style="color: var(--seg-lost);">{alpha}</b></p>
+            <p class="stat-line">Power (1-β): <b style="color: var(--seg-lost);">{beta}</b></p>
+            <p class="stat-footnote">(Standard Rigor)</p>
         """, unsafe_allow_html=True)
 
     with col_sample:
         st.markdown(f"""
-            <p style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Required Sample Size</p>
-            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Control Group: <b>{sample_sizes['n_control']}</b></p>
-            <p style="color: #e4e7eb; margin: 0; font-size: 0.95rem;">Treatment Group: <b>{sample_sizes['n_treatment']}</b></p>
-            <p style="color: #e4e7eb; margin: 0; font-size: 1.1rem; font-weight: 700;">Total: <span style="color: #6366f1;">{sample_sizes['n_control'] + sample_sizes['n_treatment']}</span></p>
+            <p class="stat-label">Required Sample Size</p>
+            <p class="stat-line">Control Group: <b>{sample_sizes['n_control']}</b></p>
+            <p class="stat-line">Treatment Group: <b>{sample_sizes['n_treatment']}</b></p>
+            <p class="stat-line" style="font-size: 1.1rem; font-weight: 700;">Total: <span style="color: var(--accent-indigo);">{sample_sizes['n_control'] + sample_sizes['n_treatment']}</span></p>
         """, unsafe_allow_html=True)
 
     st.markdown(f"""
-            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #334155; display: flex; align-items: center;">
-                <div style="background: rgba(99, 102, 241, 0.2); color: #818cf8; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; margin-right: 12px;">
+        <div class="callout callout-indigo" style="margin-top: var(--spacing-lg);">
+            <div style="display: flex; align-items: center;">
+                <div style="background: rgba(99, 102, 241, 0.2); color: #818cf8; padding: 4px 10px;
+                            border-radius: 6px; font-weight: 700; font-size: 0.85rem; margin-right: 12px;">
                     💡 BUSINESS TRANSLATION
                 </div>
                 <p style="color: #cbd5e1; margin: 0; font-size: 0.9rem;">
@@ -1027,24 +1110,23 @@ with tab_experiment:
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
+    # --- Section 2: A/B Test Paradox ---
     st.markdown("""
-        <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
-            <h3 style="color: #e4e7eb; margin-top: 0;">🧪 The A/B Test Paradox</h3>
-            <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
+        <div class="section-header" style="margin-top: var(--spacing-xl);">
+            <h3>🧪 The A/B Test Paradox</h3>
+            <p>
                 <b>Real-world scenario</b>: Marketing team has been targeting "engaged" customers.<br/>
-                <b>Problem</b>: This creates selection bias - engaged customers buy more anyway!<br/>
+                <b>Problem</b>: This creates <b>selection bias</b> — engaged customers buy more anyway!
+                Below we compare a properly randomized test against a "naive" biased one to show how
+                selection bias inflates effect estimates.
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Randomized Results (The Truth)
-    scenarios = ['Randomized Test', 'Naive (Biased)']
     # Grouping the data for Plotly
+    scenarios = ['Randomized Test', 'Naive (Biased)']
     control_rates = [ab_test_randomized_results['control_rate'], ab_test_biased_results['control_rate']]
     treatment_rates = [ab_test_randomized_results['treatment_rate'], ab_test_biased_results['treatment_rate']]
-    # Define the lifts and CIs
     lifts = [ab_test_randomized_results['absolute_lift'], ab_test_biased_results['absolute_lift']]
     lowers = [ab_test_randomized_results['ci_lower'], ab_test_biased_results['ci_lower']]
     uppers = [ab_test_randomized_results['ci_upper'], ab_test_biased_results['ci_upper']]
@@ -1052,10 +1134,10 @@ with tab_experiment:
 
     col_comparison_bar, col_comparison_ci = st.columns([1.5, 1])
 
-    # --- 1. Consolidated Conversion Bar Chart ---
+    # --- Conversion Bar Chart ---
     with col_comparison_bar:
         st.markdown('<div class="chart-title" style="font-size:0.9rem;">Conversion Rates: Randomized vs. Naive</div>', unsafe_allow_html=True)
-        
+
         fig_conv = go.Figure()
 
         fig_conv.add_trace(go.Bar(
@@ -1078,53 +1160,39 @@ with tab_experiment:
             textposition='outside'
         ))
 
-        # Add Lift Annotations (The floating "Difference" labels)
-        colors = ['#2ecc71', '#e74c3c'] # Green for good, Red for bad
+        # Lift annotations
+        lift_colors = ['#2ecc71', '#e74c3c']
         controls = [ab_test_randomized_results['control_rate'], ab_test_biased_results['control_rate']]
         treatments = [ab_test_randomized_results['treatment_rate'], ab_test_biased_results['treatment_rate']]
         for i, scenario in enumerate(scenarios):
-            lift_val = lifts[i]
-            # Choose color based on scenario
-            text_color = colors[i]
             fig_conv.add_annotation(
                 x=scenario,
-                # Position the label slightly above the taller bar
                 y=max(controls[i], treatments[i]) + 0.15,
-                text=f"Δ Lift: {lift_val:+.1%}",
+                text=f"Δ Lift: {lifts[i]:+.1%}",
                 showarrow=False,
-                font=dict(family="Inter, sans-serif", size=12, color=text_color, weight=800),
+                font=dict(family="Inter, sans-serif", size=12, color=lift_colors[i], weight=800),
                 bgcolor="rgba(15, 20, 25, 0.8)",
-                bordercolor=text_color,
+                bordercolor=lift_colors[i],
                 borderwidth=1,
                 borderpad=4
             )
 
-        fig_conv.update_layout(
-            barmode='group',
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Inter, sans-serif", color='#94a3b8'),
+        fig_conv.update_layout(**dark_chart_layout(
             height=350,
             margin=dict(t=40, b=0, l=0, r=0),
-            yaxis=dict(range=[0, 1.1]),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
-                font=dict(size=10)
-            )
-        )
+            barmode='group',
+            showlegend=True,
+            yaxis=dict(range=[0, 1.1], showgrid=True, gridcolor='#2d3748', zeroline=False, tickfont=dict(size=11)),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10)),
+        ))
         st.plotly_chart(fig_conv, use_container_width=True, config={'displayModeBar': False})
 
-    # --- 2. Consolidated Lift CI Chart ---
+    # --- Lift CI Chart ---
     with col_comparison_ci:
         st.markdown('<div class="chart-title" style="font-size:0.9rem;">Lift Comparison (95% CI)</div>', unsafe_allow_html=True)
-        
+
         fig_ci = go.Figure()
 
-        # 1. Add "No Effect" line for the legend
         fig_ci.add_trace(go.Scatter(
             x=[None], y=[None],
             mode='lines',
@@ -1132,18 +1200,16 @@ with tab_experiment:
             name='No effect'
         ))
 
-        # 2. Add both points using explicit coordinates
-        # We loop through the scenarios and plot them at their respective X positions
         for i, scenario in enumerate(scenarios):
             fig_ci.add_trace(go.Scatter(
-                x=[scenario], # Ensure this matches the string in scenarios exactly
+                x=[scenario],
                 y=[lifts[i]],
                 error_y=dict(
-                    type='data', 
+                    type='data',
                     symmetric=False,
                     array=[uppers[i] - lifts[i]],
                     arrayminus=[lifts[i] - lowers[i]],
-                    thickness=2, 
+                    thickness=2,
                     width=10,
                     color='#2ecc71' if sigs[i] else '#95a5a6'
                 ),
@@ -1153,134 +1219,99 @@ with tab_experiment:
                 showlegend=False
             ))
 
-        # 3. Add the actual horizontal zero line
         fig_ci.add_hline(y=0, line_dash="dash", line_color="red", line_width=2)
 
-        fig_ci.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Inter, sans-serif", color='#94a3b8'),
+        fig_ci.update_layout(**dark_chart_layout(
             height=350,
             margin=dict(t=40, b=40, l=40, r=20),
+            showlegend=True,
             xaxis=dict(
-                type='category', # Explicitly set to category
-                categoryorder='array',
-                categoryarray=scenarios,
-                gridcolor='#2d3748',
-                range=[-0.5, 1.5] # Adds padding so points aren't on the edges
+                type='category', categoryorder='array', categoryarray=scenarios,
+                gridcolor='#2d3748', range=[-0.5, 1.5], showgrid=False, zeroline=False, tickfont=dict(size=11)
             ),
-            yaxis=dict(
-                title='Lift (pp)',
-                gridcolor='#2d3748',
-                zeroline=False
-            ),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
-                font=dict(size=10)
-            )
-        )
+            yaxis=dict(title='Lift (pp)', gridcolor='#2d3748', zeroline=False, showgrid=True, tickfont=dict(size=11)),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10)),
+        ))
         st.plotly_chart(fig_ci, use_container_width=True, config={'displayModeBar': False})
-    
+
     # Contextual Warning
     st.warning(f"🚨 **The Illusion:** The Naive test suggests a lift of **{(lifts[1]*100):.1f}%**, while the True lift is only **{(lifts[0]*100):.1f}%**. This happens because we treated users who were going to buy anyway!")
 
+    # --- Section 3: Diagnose Confounding ---
     col_hist, col_stats = st.columns([1.6, 1])
 
     with col_hist:
         st.markdown("""
-            <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
-                <h3 style="color: #e4e7eb; margin-top: 0;">⚠️ Diagnose Confounding - Treatment Assignment Bias</h3>
-                <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
-                    Treatment and control groups have DIFFERENT activity levels. This confounds our analysis - we're not comparing like to like!
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+            <div class="section-header">
+                <h3>⚠️ Diagnose Confounding — Treatment Assignment Bias</h3>
+                <p>
+                    The histograms below show that treatment and control groups have <b>very different</b>
+                    activity score distributions. Because higher-activity customers were more likely to
+                    receive the discount, the groups are not comparable — any observed lift is confounded.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
 
-
-        # Calculate means for the lines
         mean_control = biased_experiment_data[biased_experiment_data['treated'] == 0]['activity_score'].mean()
         mean_treated = biased_experiment_data[biased_experiment_data['treated'] == 1]['activity_score'].mean()
         plot_df = biased_experiment_data.copy()
         plot_df['Group'] = plot_df['treated'].map({0: 'Control', 1: 'Treated'})
 
-        # 2. Update the histogram
         fig_hist = px.histogram(
             plot_df,
             x="activity_score",
-            color="Group", # Use the new string column
+            color="Group",
             barmode="overlay",
             opacity=0.7,
-            # Update the color map to use the new string keys
             color_discrete_map={'Control': '#94a3b8', 'Treated': '#667eea'},
-            category_orders={"Group": ["Control", "Treated"]} # Ensures consistent ordering
+            category_orders={"Group": ["Control", "Treated"]}
         )
 
-        # 3. Update the mean lines to use the new labels
         fig_hist.add_vline(
-            x=mean_control, 
-            line_dash="dash", 
-            line_color="#94a3b8", 
-            annotation_text=f"Control Mean: {mean_control:.1f}", 
+            x=mean_control,
+            line_dash="dash",
+            line_color="#94a3b8",
+            annotation_text=f"Control Mean: {mean_control:.1f}",
             annotation_position="top left",
             annotation_font_color="#94a3b8"
         )
-
         fig_hist.add_vline(
-            x=mean_treated, 
-            line_dash="dash", 
-            line_color="#667eea", 
-            annotation_text=f"Treated Mean: {mean_treated:.1f}", 
+            x=mean_treated,
+            line_dash="dash",
+            line_color="#667eea",
+            annotation_text=f"Treated Mean: {mean_treated:.1f}",
             annotation_position="top right",
             annotation_font_color="#667eea"
         )
 
-        fig_hist.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)', # Transparent to match your container
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Inter, sans-serif", color='#e4e7eb'),
+        fig_hist.update_layout(**dark_chart_layout(
             height=400,
-            margin=dict(t=50), # Space for annotations
-            xaxis=dict(
-                showgrid=True,
-                gridcolor='#2d3748',
-                title='Activity Score'
-            ),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='#2d3748',
-                title='Customer Count'
-            ),
+            margin=dict(t=50, b=40, l=30, r=20),
+            font=dict(family="Inter, sans-serif", color='#e4e7eb'),
+            showlegend=True,
+            xaxis=dict(showgrid=True, gridcolor='#2d3748', title='Activity Score', zeroline=False, tickfont=dict(size=11)),
+            yaxis=dict(showgrid=True, gridcolor='#2d3748', title='Customer Count', zeroline=False, tickfont=dict(size=11)),
             legend=dict(
                 title="Group",
                 bgcolor='rgba(26, 31, 46, 0.8)',
-                bordercolor='#2d3748',
-                borderwidth=1,
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            )
-        )
-
+                bordercolor='#2d3748', borderwidth=1,
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+        ))
         st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
 
     with col_stats:
         st.markdown("""
-            <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
-                <h3 style="color: #e4e7eb; margin-top: 0;">⚠️ Diagnose Confounding - SMD</h3>
-                <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
-                    SMD (Standardized Mean Difference): It measures the size of the difference between groups in a way that isn't affected by the scale of the units.
+            <div class="section-header">
+                <h3>⚠️ Diagnose Confounding — SMD</h3>
+                <p>
+                    The <b>Standardized Mean Difference (SMD)</b> measures how far apart two groups are
+                    on a given feature, normalized by pooled standard deviation. An SMD > 0.1 is a
+                    red flag — the groups differ meaningfully on that covariate.
                 </p>
             </div>
         """, unsafe_allow_html=True)
-        
-        # Calculate balance metrics (using your reported numbers)
-        # In a real app, you can automate this calculation
+
         balance_df = pd.DataFrame({
             "Feature": ["Activity", "Tenure", "Purchases"],
             "Diff": ["+20.17", "+5.30", "+0.93"],
@@ -1288,7 +1319,6 @@ with tab_experiment:
             "Imbalanced": ["⚠️ YES", "⚠️ YES", "⚠️ YES"]
         })
 
-        # Displaying the table with modern styling
         st.dataframe(
             balance_df,
             column_config={
@@ -1302,23 +1332,26 @@ with tab_experiment:
         )
 
         st.markdown(f"""
-            <div style="background-color: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); padding: 12px; border-radius: 8px;">
-                <p style="margin: 0; font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
-                    <b style="color: #f43f5e;">Crucial Note:</b> An SMD > 0.1 indicates <b>Selection Bias</b>. 
+            <div class="callout callout-red">
+                <p>
+                    <b style="color: #f43f5e;">Crucial Note:</b> An SMD > 0.1 indicates <b>Selection Bias</b>.
                     Simple A/B comparisons will be misleading because the groups are no longer comparable.
                 </p>
             </div>
         """, unsafe_allow_html=True)
 
-    # Dose-Response
+    # --- Section 4: Dose-Response ---
     st.markdown("""
-            <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
-                <h3 style="color: #e4e7eb; margin-top: 0;">💊 Dose-Response Simulation</h3>
-                <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
-                    <b>Business Question</b>: What's the optimal discount level? Not just "which is best" but "what's the relationship between dose and response?"
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
+        <div class="section-header">
+            <h3>💊 Dose-Response Simulation</h3>
+            <p>
+                <b>Business Question</b>: What's the optimal discount level? This chart shows the
+                causal relationship between discount size ("dose") and conversion rate ("response").
+                The gold star marks the dose with the highest observed response. A linear fit
+                reveals whether more discount always means more lift, or if returns diminish.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
     doses = []
     means = []
@@ -1333,15 +1366,13 @@ with tab_experiment:
     means = np.array(means)
     ses = np.array(ses)
 
-    # Create smooth linear fit line
     x_smooth = np.linspace(min(doses), max(doses), 100)
-    linear_fit = (dose_results['linear_model']['intercept'] + 
+    linear_fit = (dose_results['linear_model']['intercept'] +
                 dose_results['linear_model']['slope'] * x_smooth)
 
-    # 2. Build the Plotly Figure
     fig_dose = go.Figure()
 
-    # Add Confidence Interval (Shaded Area)
+    # Confidence interval band
     fig_dose.add_trace(go.Scatter(
         x=np.concatenate([doses, doses[::-1]]),
         y=np.concatenate([means + ses, (means - ses)[::-1]]),
@@ -1353,7 +1384,7 @@ with tab_experiment:
         name='Standard Error'
     ))
 
-    # Add Observed Line & Points
+    # Observed line & points
     fig_dose.add_trace(go.Scatter(
         x=doses, y=means,
         mode='lines+markers',
@@ -1362,7 +1393,7 @@ with tab_experiment:
         marker=dict(size=10, line=dict(color='#0f1419'))
     ))
 
-    # Add Linear Fit (Dashed)
+    # Linear fit (dashed)
     fig_dose.add_trace(go.Scatter(
         x=x_smooth, y=linear_fit,
         mode='lines',
@@ -1370,50 +1401,41 @@ with tab_experiment:
         line=dict(color='#f43f5e', dash='dash', width=2)
     ))
 
-    # Highlight Optimal Point (Gold Star)
+    # Optimal point (gold star)
     fig_dose.add_trace(go.Scatter(
         x=[dose_results['optimal_dose']],
         y=[dose_results['optimal_response']],
         mode='markers',
         name='Optimal',
         marker=dict(
-            symbol='star', size=18, color='#fbbf24', 
+            symbol='star', size=18, color='#fbbf24',
             line=dict(color='#0f1419', width=2)
         )
     ))
 
-    fig_dose.update_layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(family="Inter, sans-serif", color='#94a3b8'),
+    fig_dose.update_layout(**dark_chart_layout(
         height=500,
         margin=dict(t=40, b=40, l=40, r=20),
+        showlegend=True,
         hovermode='x unified',
         xaxis=dict(
-            title="Discount Level",
-            tickformat='.0%',
-            gridcolor='#2d3748',
-            zeroline=False
+            title="Discount Level", tickformat='.0%',
+            gridcolor='#2d3748', zeroline=False, showgrid=False, tickfont=dict(size=11)
         ),
         yaxis=dict(
-            title="Conversion Rate",
-            tickformat='.1%',
-            gridcolor='#2d3748'
+            title="Conversion Rate", tickformat='.1%',
+            gridcolor='#2d3748', showgrid=True, zeroline=False, tickfont=dict(size=11)
         ),
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-        )
-    )
-
-    # Render Chart
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    ))
     st.plotly_chart(fig_dose, use_container_width=True, config={'displayModeBar': False})
 
     # Business Implication Footer
     st.markdown(f"""
-        <div style="background-color: rgba(251, 191, 36, 0.1); border-left: 4px solid #fbbf24; padding: 1.2rem; border-radius: 4px; margin-top: 10px;">
-            <h4 style="margin: 0 0 10px 0; color: #fbbf24; font-size: 1rem;">🎯 Optimal Strategy: {dose_results['optimal_dose']:.0%} Discount</h4>
-            <p style="margin: 0; font-size: 0.9rem; color: #e4e7eb; line-height: 1.5;">
-                <b>Insight</b>: The relationship is <b>linear</b> (more discount = more lift). 
+        <div class="callout callout-amber">
+            <h4 style="margin: 0 0 10px 0; color: var(--seg-lost); font-size: 1rem;">🎯 Optimal Strategy: {dose_results['optimal_dose']:.0%} Discount</h4>
+            <p style="line-height: 1.5;">
+                <b>Insight</b>: The relationship is <b>linear</b> (more discount = more lift).
                 We recommend the <b>{dose_results['optimal_dose']:.0%}</b> offer to maximize lift without cannibalizing margin.
             </p>
         </div>
