@@ -172,6 +172,11 @@ st.markdown("""
         --card-color-dark: rgba(245, 158, 11, 0.15);
     }
 
+    .segment-card-indigo {
+        --card-color: rgba(99, 102, 241, 0.15);
+        --card-color-dark: rgba(79, 70, 229, 0.15);
+    }
+
     .segment-header {
         display: flex;
         align-items: center;
@@ -802,6 +807,17 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+    <div class="callout callout-indigo" style="margin-top: 5px; margin-bottom: 25px;">
+        <p style="margin: 0; font-size: 0.95rem; line-height: 1.6;">
+            <b>This interactive dashboard demonstrates how <b>causal inference</b> 
+            can solve real-world business challenges. Explore the tabs below to simulate customer behavior, 
+            run (potentially biased) experiments, and apply advanced estimators like <b>Double Machine Learning</b> 
+            and <b>Uplift Modeling</b> to recover the true treatment effect and optimize your strategy.
+        </p>
+    </div>
+""", unsafe_allow_html=True)
+
 # Tabs
 tab_simulation, tab_experiment, tab_inference = st.tabs([
     "Ground Truth", 
@@ -1167,6 +1183,65 @@ with tab_experiment:
             </p>
         </div>
     """, unsafe_allow_html=True)
+
+    # --- Scenario cards ---
+    test_scenarios_config = [
+        {
+            'name': 'Randomized A/B Test',
+            'color': 'indigo',
+            'dot_color': 'var(--accent-indigo)',
+            'metric1_label': 'ASSIGNMENT',
+            'metric1_value': 'Purely Random',
+            'metric1_subtext': '(x/y split)',
+            'metric2_label': 'BIAS RISK',
+            'metric2_value': 'Zero',
+            'metric2_width': '5%',
+            'insight': 'Gold standard for causality'
+        },
+        {
+            'name': 'Naive (Biased) Test',
+            'color': 'sleeping',
+            'dot_color': 'var(--seg-sleeping)',
+            'metric1_label': 'ASSIGNMENT',
+            'metric1_value': 'Selective',
+            'metric1_subtext': '(Highly Active)',
+            'metric2_label': 'BIAS RISK',
+            'metric2_value': 'Critical',
+            'metric2_width': '95%',
+            'insight': 'Inflates lift estimates'
+        }
+    ]
+
+    cols_scenario = st.columns(2)
+    for col, config in zip(cols_scenario, test_scenarios_config):
+        with col:
+            card_html = f"""
+    <div class="segment-card segment-card-{config['color']}">
+        <div class="segment-header">
+            <span class="segment-dot" style="background-color: {config['dot_color']};"></span>
+            <h3 class="segment-title">{config['name']}</h3>
+        </div>
+        <div class="segment-metric">
+            <div class="metric-label">{config['metric1_label']}</div>
+            <div class="metric-value" style="color: {config['dot_color']};">
+                {config['metric1_value']}
+                <span class="metric-subtext">{config['metric1_subtext']}</span>
+            </div>
+        </div>
+        <div class="segment-metric">
+            <div class="metric-label">{config['metric2_label']}</div>
+            <div class="metric-value" style="color: {config['dot_color']}; font-size: var(--font-size-metric-sm);">
+                {config['metric2_value']}
+            </div>
+            <div class="metric-bar">
+                <div class="metric-bar-fill" style="width: {config['metric2_width']}; background-color: {config['dot_color']}; box-shadow: 0 0 10px {config['dot_color']}44;"></div>
+            </div>
+        </div>
+        <div style="margin-top: 12px; font-size: 0.85rem; color: var(--text-secondary); font-style: italic;">
+            {config['insight']}
+        </div>
+    </div>"""
+            st.markdown(card_html, unsafe_allow_html=True)
 
     # Grouping the data for Plotly
     scenarios = ['Randomized Test', 'Naive (Biased)']
