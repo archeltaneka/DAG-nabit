@@ -365,6 +365,51 @@ st.markdown("""
     }
 
     /* =================================================================
+       Method Cards (Causal Inference Methods tab)
+       ================================================================= */
+    .method-card {
+        padding: var(--spacing-lg);
+        border-radius: var(--radius-lg);
+        height: 100%;
+        border: 1px solid transparent;
+    }
+
+    .method-card h3 {
+        font-size: 1.1rem;
+        margin-top: 0;
+    }
+
+    .method-card p {
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    .method-card ul {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        padding-left: 1.2rem;
+    }
+
+    .method-card-psm {
+        background: rgba(99, 102, 241, 0.05);
+        border-color: var(--accent-indigo);
+    }
+    .method-card-psm h3 { color: var(--accent-indigo); }
+
+    .method-card-dml {
+        background: rgba(45, 212, 191, 0.05);
+        border-color: #2dd4bf;
+    }
+    .method-card-dml h3 { color: #2dd4bf; }
+
+    .method-card-uplift {
+        background: rgba(251, 191, 36, 0.05);
+        border-color: var(--seg-lost);
+    }
+    .method-card-uplift h3 { color: var(--seg-lost); }
+
+    /* =================================================================
        Tabs
        ================================================================= */
     .stTabs [data-baseweb="tab-list"] {
@@ -1446,11 +1491,13 @@ with tab_experiment:
 # -----------------------------------------------------------------------------
 
 with tab_inference:
+    # --- Section: Advanced Causal Estimators ---
     st.markdown("""
-        <div style="background-color: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem;">
-            <h3 style="color: #e4e7eb; margin-top: 0;">Advanced Causal Estimators</h3>
-            <p style="color: #94a3b8; font-size: 1rem; margin-bottom: 0;">
-                Since our A/B test was biased, we use these models to adjust for confounders and recover the <b>True Treatment Effect</b>. We introduce 3 approaches to solve this problem.
+        <div class="section-header">
+            <h3>Advanced Causal Estimators</h3>
+            <p>
+                Since our A/B test was biased, we use these models to adjust for confounders and recover the
+                <b>True Treatment Effect</b>. We introduce 3 approaches to solve this problem.
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -1459,12 +1506,13 @@ with tab_inference:
 
     with col_psm:
         st.markdown("""
-            <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid #6366f1; padding: 1.5rem; border-radius: 12px; height: 100%;">
-                <h3 style="color: #6366f1; font-size: 1.1rem; margin-top: 0;">🎯 Propensity Score Matching</h3>
-                <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6;">
-                    <b>The Strategy:</b> It mimics a randomized trial by pairing treated users with control users who had the <i>exact same probability</i> of being treated.
+            <div class="method-card method-card-psm">
+                <h3>🎯 Propensity Score Matching</h3>
+                <p>
+                    <b>The Strategy:</b> It mimics a randomized trial by pairing treated users with control users
+                    who had the <i>exact same probability</i> of being treated.
                 </p>
-                <ul style="color: #94a3b8; font-size: 0.85rem; padding-left: 1.2rem;">
+                <ul>
                     <li>Reduces selection bias.</li>
                     <li>Creates a "synthetic" control group.</li>
                     <li>Best for: Observational data with high imbalance.</li>
@@ -1474,12 +1522,13 @@ with tab_inference:
 
     with col_dml:
         st.markdown("""
-            <div style="background: rgba(45, 212, 191, 0.05); border: 1px solid #2dd4bf; padding: 1.5rem; border-radius: 12px; height: 100%;">
-                <h3 style="color: #2dd4bf; font-size: 1.1rem; margin-top: 0;">🤖 Double Machine Learning</h3>
-                <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6;">
-                    <b>The Strategy:</b> Uses two ML models to "partial out" the effects of covariates from both the treatment and the outcome.
+            <div class="method-card method-card-dml">
+                <h3>🤖 Double Machine Learning</h3>
+                <p>
+                    <b>The Strategy:</b> Uses two ML models to "partial out" the effects of covariates from both
+                    the treatment and the outcome.
                 </p>
-                <ul style="color: #94a3b8; font-size: 0.85rem; padding-left: 1.2rem;">
+                <ul>
                     <li>Handles high-dimensional data.</li>
                     <li>Unbiased even with complex non-linear bias.</li>
                     <li>Best for: Complex digital ecosystems.</li>
@@ -1489,37 +1538,37 @@ with tab_inference:
 
     with col_uplift:
         st.markdown("""
-            <div style="background: rgba(251, 191, 36, 0.05); border: 1px solid #fbbf24; padding: 1.5rem; border-radius: 12px; height: 100%;">
-                <h3 style="color: #fbbf24; font-size: 1.1rem; margin-top: 0;">🚀 Uplift Modeling</h3>
-                <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6;">
-                    <b>The Strategy:</b> Instead of predicting "will they buy?", it predicts "will the <i>discount</i> make them buy?" (Individual Treatment Effect).
+            <div class="method-card method-card-uplift">
+                <h3>🚀 Uplift Modeling</h3>
+                <p>
+                    <b>The Strategy:</b> Instead of predicting "will they buy?", it predicts "will the <i>discount</i>
+                    make them buy?" (Individual Treatment Effect).
                 </p>
-                <ul style="color: #94a3b8; font-size: 0.85rem; padding-left: 1.2rem;">
+                <ul>
                     <li>Identifies "Persuadables."</li>
                     <li>Avoids wasting budget on "Sure Things."</li>
                     <li>Best for: Personalized marketing & ROI.</li>
                 </ul>
             </div>
         """, unsafe_allow_html=True)
-    
-    # Method Comparison
+
+    # --- Method Comparison ---
     st.markdown("### Method Comparison")
-    
+
     col_ate, col_error = st.columns([1.5, 1])
 
-    # --- 1. ATE Estimates (Horizontal Bar) ---
     with col_ate:
         st.markdown('<div class="chart-title" style="font-size:0.9rem;">Treatment Effect Estimates vs. Ground Truth</div>', unsafe_allow_html=True)
-        
+
         methods = causal_inference_results['Method'].tolist()[1:]
         ates = causal_inference_results['ATE'].tolist()[1:]
-        
+
         fig_ate = go.Figure()
 
         # Add the bars for each method
         fig_ate.add_trace(go.Bar(
-            y=methods, # Skip the ground truth barplot
-            x=ates, # Skip the ground truth barplot
+            y=methods,
+            x=ates,
             orientation='h',
             marker_color=['#f43f5e', '#6366f1', '#2dd4bf', '#fbbf24'][:len(methods)],
             opacity=0.8,
@@ -1530,32 +1579,27 @@ with tab_inference:
 
         # Add the Ground Truth Vertical Line
         fig_ate.add_vline(
-            x=causal_inference_results['ATE'][0], 
-            line_dash="dash", 
-            line_color="#2ecc71", 
+            x=causal_inference_results['ATE'][0],
+            line_dash="dash",
+            line_color="#2ecc71",
             line_width=2,
             annotation_text=f"Ground Truth: +{causal_inference_results['ATE'][0]:.4f}",
             annotation_position="top left"
         )
 
-        fig_ate.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Inter, sans-serif", color='#94a3b8'),
+        fig_ate.update_layout(**dark_chart_layout(
             height=400,
             margin=dict(t=40, b=40, l=0, r=60),
-            xaxis=dict(title="Estimated ATE", gridcolor='#2d3748', zeroline=False),
-            yaxis=dict(autorange="reversed") # Keeps the order consistent with your df
-        )
+            xaxis=dict(title="Estimated ATE", gridcolor='#2d3748', zeroline=False, tickfont=dict(size=11)),
+            yaxis=dict(autorange="reversed", tickfont=dict(size=11)),
+        ))
         st.plotly_chart(fig_ate, use_container_width=True, config={'displayModeBar': False})
 
-    # --- 2. Absolute Error Comparison ---
     with col_error:
         st.markdown('<div class="chart-title" style="font-size:0.9rem;">Estimation Error (Abs)</div>', unsafe_allow_html=True)
-        
-        # Exclude Ground Truth for the error plot if it exists in the DF
+
         error_df = causal_inference_results[causal_inference_results['Method'] != 'Ground Truth']
-        
+
         fig_err = go.Figure()
 
         fig_err.add_trace(go.Bar(
@@ -1568,168 +1612,142 @@ with tab_inference:
             cliponaxis=False
         ))
 
-        fig_err.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Inter, sans-serif", color='#94a3b8'),
+        fig_err.update_layout(**dark_chart_layout(
             height=400,
             margin=dict(t=40, b=40, l=40, r=20),
-            xaxis=dict(gridcolor='#2d3748'),
-            yaxis=dict(title="Absolute Error", gridcolor='#2d3748')
-        )
+            xaxis=dict(gridcolor='#2d3748', tickfont=dict(size=11)),
+            yaxis=dict(title="Absolute Error", gridcolor='#2d3748', tickfont=dict(size=11)),
+        ))
         st.plotly_chart(fig_err, use_container_width=True, config={'displayModeBar': False})
-    
+
     # Business Implication Footer
     efficient_models = causal_inference_results[~causal_inference_results['Method'].isin(['Naive (Biased)', 'Ground Truth'])]
-    best_row = efficient_models.loc[efficient_models['ATE'].idxmax()]
+    best_row = efficient_models.loc[efficient_models['Error'].idxmin()] # Select by lowest error
     best_method = best_row['Method']
     best_ate = best_row['ATE']
     best_error = best_row['Error']
     target_lift_increase = (control_rate * minimum_detectable_effect*100)+control_rate*100
 
     st.markdown(f"""
-    <div style="background-color: rgba(99, 102, 241, 0.1); border-left: 4px solid #6366f1; padding: 1.2rem; border-radius: 4px; margin-top: 10px; margin-bottom: 20px;">
-        <h4 style="margin: 0 0 10px 0; color: #818cf8; font-size: 1rem;">🎯 Best Estimator: {best_method}</h4>
-        <p style="margin: 0; font-size: 0.9rem; color: #e4e7eb; line-height: 1.5;">
-            <b>Insight</b>: After removing selection bias, the best method, <b>{best_method}</b> identifies a true lift of <b>{best_ate:+.2f}</b> with an estimated <b>{best_error*100:.2f}%</b> error. 
-            This means that the treatment increases purchase probability by {best_ate*100:+.2f}% which exceeds our primary goal of {target_lift_increase-(control_rate*100)}%
-        </p>
-    </div>
+        <div class="callout callout-indigo">
+            <h4 style="margin: 0 0 10px 0; color: #818cf8; font-size: 1rem;">🎯 Best Estimator: {best_method}</h4>
+            <p style="margin: 0; font-size: 0.9rem; color: #e4e7eb; line-height: 1.5;">
+                <b>Insight</b>: After removing selection bias, the best method, <b>{best_method}</b>
+                identifies a true lift of <b>{best_ate:+.2f}</b> with an estimated <b>{best_error*100:.2f}%</b> error.
+                This means that the treatment increases purchase probability by {best_ate*100:+.2f}%
+                which exceeds our primary goal of {target_lift_increase-(control_rate*100)}%.
+            </p>
+        </div>
     """, unsafe_allow_html=True)
-    
-    # Uplift section
-    st.markdown("### Cumulative Gain Logic")        
+
+    # --- Section: Cumulative Gain Logic ---
     st.markdown("""
-    If we target customers sorted by their **predicted uplift** (highest to lowest),
-    how much total value do we capture compared to random targeting?
-    
-    The area between the curves represents the **Value of Personalization**.
-    """)
-        
-    # Gain curve
+        <div class="section-header" style="margin-top: var(--spacing-xl);">
+            <h3>📈 Cumulative Gain Logic</h3>
+            <p>
+                If we target customers sorted by their <b>predicted uplift</b> (highest to lowest),
+                how much total value do we capture compared to random targeting?
+                The area between the curves represents the <b>Value of Personalization</b>.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Gain curve calculation
     sorted_df = biased_experiment_data.sort_values('discount_effect', ascending=False).reset_index()
     sorted_df['cum_n'] = sorted_df.index + 1
     sorted_df['cum_lift'] = sorted_df['discount_effect'].cumsum()
-    
+
     total_lift = sorted_df['discount_effect'].sum()
     sorted_df['random_lift'] = (sorted_df['cum_n'] / len(sorted_df)) * total_lift
-    
+
     fig_gain = go.Figure()
-    
+
     fig_gain.add_trace(go.Scatter(
-        x=sorted_df['cum_n'], 
-        y=sorted_df['cum_lift'], 
-        mode='lines', 
+        x=sorted_df['cum_n'],
+        y=sorted_df['cum_lift'],
+        mode='lines',
         name='Uplift Model (Perfect)',
-        line=dict(color='#667eea', width=3)
+        line=dict(color='var(--accent-indigo)', width=3)
     ))
-    
+
     fig_gain.add_trace(go.Scatter(
-        x=sorted_df['cum_n'], 
-        y=sorted_df['random_lift'], 
-        mode='lines', 
+        x=sorted_df['cum_n'],
+        y=sorted_df['random_lift'],
+        mode='lines',
         name='Random Targeting',
-        line=dict(color='#94a3b8', width=2, dash='dash')
+        line=dict(color='var(--text-muted)', width=2, dash='dash')
     ))
-    
-    fig_gain.update_layout(
-        plot_bgcolor='#0f1419',
-        paper_bgcolor='#0f1419',
-        font_color='#e4e7eb',
+
+    fig_gain.update_layout(**dark_chart_layout(
         height=400,
-        xaxis=dict(
-            showgrid=True,
-            gridcolor='#2d3748',
-            title='Customers Targeted'
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor='#2d3748',
-            title='Cumulative Lift Captured'
-        ),
-        legend=dict(
-            bgcolor='rgba(26, 31, 46, 0.8)',
-            bordercolor='#2d3748',
-            borderwidth=1
-        )
-    )
-    
-    st.plotly_chart(fig_gain, use_container_width=True)
+        showlegend=True,
+        xaxis=dict(showgrid=True, gridcolor='#2d3748', title='Customers Targeted', zeroline=False, tickfont=dict(size=11)),
+        yaxis=dict(showgrid=True, gridcolor='#2d3748', title='Cumulative Lift Captured', zeroline=False, tickfont=dict(size=11)),
+        legend=dict(bgcolor='rgba(26, 31, 46, 0.8)', bordercolor='#2d3748', borderwidth=1),
+    ))
 
-    st.markdown("### Uplift Distribution by Predicted Segment")        
+    st.plotly_chart(fig_gain, use_container_width=True, config={'displayModeBar': False})
+
+    # --- Section: Uplift Distribution ---
     st.markdown("""
-    Persuadables (positive uplift) are the only group where a discount drives a net-new purchase. 
-    Conversely, Sleeping Dogs (negative uplift) are likely to be annoyed or unsubscribed by the same offer, leading to a loss in value.
-    """)
+        <div class="section-header" style="margin-top: var(--spacing-xl);">
+            <h3>📉 Uplift Distribution & Segmentation</h3>
+            <p>
+                <b>Persuadables</b> (positive uplift) are the only group where a discount drives a net-new purchase.
+                Conversely, <b>Sleeping Dogs</b> (negative uplift) are likely to be annoyed by the same offer, leading to a loss in value.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Base histogram
-    segment_colors = {
-        "Neutral": "#38bdf8",
-        "Persuadable": "#22c55e",
-        "Sleeping Dog": "#ec4899",
-        "Weak Responder": "#fbbf24"
-    }
-
-    col_chart, col_table = st.columns([2, 1]) # Histogram gets more space
+    col_chart, col_table = st.columns([2, 1])
 
     with col_chart:
         segment_fig = px.histogram(
-            segmented, 
-            x="predicted_uplift", 
+            segmented,
+            x="predicted_uplift",
             color="predicted_segment",
             nbins=100,
-            barmode='overlay',  # Overlays bars (like alpha=0.5 in matplotlib)
+            barmode='overlay',
             opacity=0.6,
             labels={'predicted_uplift': 'Predicted Uplift', 'predicted_segment': 'Segment'},
-            color_discrete_map=segment_colors,
-            category_orders={"predicted_segment": ["Neutral", "Persuadable", "Sleeping Dog", "Weak Responder"]}
+            color_discrete_map=SEGMENT_COLORS,
+            category_orders={"predicted_segment": ["Loyalists", "Persuadables", "Sleeping Dogs", "Lost Causes"]}
         )
 
-        #  Add the vertical "No Effect" line
         segment_fig.add_vline(
-            x=0, 
-            line_dash="dash", 
-            line_color="red", 
+            x=0,
+            line_dash="dash",
+            line_color="red",
             line_width=2,
-            annotation_text="Zero Uplift", 
+            annotation_text="Zero Uplift",
             annotation_position="top left"
         )
 
-        # Customizing the layout to match your dashboard style
-        segment_fig.update_layout(
+        segment_fig.update_layout(**dark_chart_layout(
             title="<b>Uplift Distribution by Predicted Segment</b>",
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Inter, sans-serif", color='#94a3b8'),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            ),
-            margin=dict(t=80, b=40, l=40, r=20),
             height=400,
-            hovermode='x unified'
-        )
-        
-        # Clean up axes
-        segment_fig.update_xaxes(showgrid=True, gridcolor='#2d3748', zeroline=False)
-        segment_fig.update_yaxes(showgrid=True, gridcolor='#2d3748', title="Count")
+            margin=dict(t=80, b=40, l=40, r=20),
+            showlegend=True,
+            hovermode='x unified',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        ))
 
-        st.plotly_chart(segment_fig, use_container_width=True)
+        segment_fig.update_xaxes(showgrid=True, gridcolor='#2d3748', zeroline=False, tickfont=dict(size=11))
+        segment_fig.update_yaxes(showgrid=True, gridcolor='#2d3748', title="Count", tickfont=dict(size=11))
+
+        st.plotly_chart(segment_fig, use_container_width=True, config={'displayModeBar': False})
 
     with col_table:
         segment_counts = segmented['predicted_segment'].value_counts()
         total_count = len(segmented)
 
-        # Creating a clean DataFrame for the table
         table_data = []
-        for segment, color in segment_colors.items():
+        # Use sorted keys to match the chart order
+        for segment in ["Loyalists", "Persuadables", "Sleeping Dogs", "Lost Causes"]:
             count = segment_counts.get(segment, 0)
             percentage = (count / total_count) * 100
             avg_uplift = segmented[segmented['predicted_segment'] == segment]['predicted_uplift'].mean()
-    
+
             table_data.append({
                 "Segment": segment,
                 "Users": f"{count:,}",
@@ -1738,19 +1756,16 @@ with tab_inference:
             })
 
         def color_segments(val):
-            color = segment_colors.get(val, "")
+            color = SEGMENT_COLORS.get(val, "")
             return f'background-color: {color}; color: black; font-weight: bold'
 
-        # Apply styling
-        table_data = pd.DataFrame(table_data)
-        table_data = table_data.style.applymap(color_segments, subset=['Segment'])
+        table_data_df = pd.DataFrame(table_data)
+        styled_table = table_data_df.style.applymap(color_segments, subset=['Segment'])
 
-        st.markdown("<br><br>", unsafe_allow_html=True) # Vertical alignment
-        st.write("### Segment Breakdown")
-        
-        # Custom CSS to inject the segment colors as small indicators
+        st.markdown('<div class="sidebar-section-title">Segment Breakdown</div>', unsafe_allow_html=True)
+
         st.dataframe(
-            table_data,
+            styled_table,
             column_config={
                 "Segment": st.column_config.TextColumn("Segment"),
                 "Share": st.column_config.ProgressColumn("Share", format="%s", min_value=0, max_value=100),
@@ -1758,5 +1773,5 @@ with tab_inference:
             hide_index=True,
             use_container_width=True
         )
-        
+
         st.caption("Targeting **Persuadables** maximizes ROI, while avoiding **Sleeping Dogs** prevents churn.")
