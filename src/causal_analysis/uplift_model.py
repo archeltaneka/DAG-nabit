@@ -148,7 +148,7 @@ class UpliftModel:
             data_copy['predicted_uplift'] > -0.02,  # Neutral
             data_copy['predicted_uplift'] <= -0.02  # Negative
         ]
-        segments = ['Persuadable', 'Weak Responder', 'Neutral', 'Sleeping Dog']
+        segments = ['Persuadables', 'Lost Causes', 'Loyalists', 'Sleeping Dogs']
         
         data_copy['predicted_segment'] = np.select(conditions, segments, default='Unknown')
         
