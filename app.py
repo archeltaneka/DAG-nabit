@@ -1,9 +1,9 @@
 """
-CausalSim - Business Strategy Simulation Dashboard
+DAG-nabit - Business Strategy Simulation Dashboard
 ===================================================
 
 Interactive dashboard for business strategy simulation using causal inference.
-Version 1.2
+Version 1.0
 """
 
 import streamlit as st
@@ -12,26 +12,25 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import textwrap
 
-from data.generators.config import SimulationConfig, SEGMENT_PARAMS
-from data.generators.customer_generator import generate_customer_data
-from data.generators.behavior_simulator import BehaviorSimulator
+from src.generators.config import SimulationConfig, SEGMENT_PARAMS
+from src.generators.customer_generator import generate_customer_data
+from src.generators.behavior_simulator import BehaviorSimulator
 
-from experiments.observational_study import ObservationalStudy, ObservationalStudyConfig
-from experiments.multi_arm import DoseResponseExperiment
-from experiments.ab_test import ABTest, ABTestConfig
+from src.experiments.observational_study import ObservationalStudy, ObservationalStudyConfig
+from src.experiments.multi_arm import DoseResponseExperiment
+from src.experiments.ab_test import ABTest, ABTestConfig
 
-from causal_analysis.propensity_score import PropensityScoreMatcher
-from causal_analysis.double_ml import DoubleMachineLearning
-from causal_analysis.uplift_model import UpliftModel
+from src.causal_analysis.propensity_score import PropensityScoreMatcher
+from src.causal_analysis.double_ml import DoubleMachineLearning
+from src.causal_analysis.uplift_model import UpliftModel
 
 # -----------------------------------------------------------------------------
 # Configuration & Setup
 # -----------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="CausalSim",
+    page_title="DAG-nabit",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -458,8 +457,8 @@ with st.sidebar:
     # Sidebar header
     st.markdown("""
         <div class="sidebar-header">
-            <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem;">CausalSim</div>
-            <div style="color: #718096; font-size: 0.875rem;">v1.2</div>
+            <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem;">DAG-nabit</div>
+            <div style="color: #718096; font-size: 0.875rem;">v1.0</div>
         </div>
     """, unsafe_allow_html=True)
     
@@ -601,8 +600,8 @@ st.markdown("""
     <div class="app-header">
         <div class="app-logo">C</div>
         <div>
-            <span class="app-title">CausalSim</span>
-            <span class="app-version">v1.2</span>
+            <span class="app-title">DAG-nabit</span>
+            <span class="app-version">v1.0</span>
         </div>
     </div>
 """, unsafe_allow_html=True)
